@@ -7,8 +7,9 @@ import { useOs } from "@/lib/os-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/chat")({
-  component: Chat;
+  component: Chat,
 });
+
 
 type Msg = {
   role: "user" | "assistant";
