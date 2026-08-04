@@ -61,12 +61,13 @@ const ANSWERS: Record<string, Msg> = {
 
 function pick(q: string): Msg {
   const s = q.toLowerCase();
-  if (s.includes("price") || s.includes("pricing") || s.includes("699")) return ANSWERS.price!;
-  if (s.includes("retention") || s.includes("churn") || s.includes("drop")) return ANSWERS.retention!;
-  if (s.includes("investor") || s.includes("raise") || s.includes("fund")) return ANSWERS.investor!;
-  if (s.includes("studyos") || s.includes("competitor")) return ANSWERS.competitor!;
-  return ANSWERS.default!;
+  if (s.includes("price") || s.includes("pricing") || s.includes("699")) return ANSWERS["price"]!;
+  if (s.includes("retention") || s.includes("churn") || s.includes("drop")) return ANSWERS["retention"]!;
+  if (s.includes("investor") || s.includes("raise") || s.includes("fund")) return ANSWERS["investor"]!;
+  if (s.includes("studyos") || s.includes("competitor")) return ANSWERS["competitor"]!;
+  return ANSWERS["default"]!;
 }
+
 
 function Chat() {
   const { pushActivity } = useOs();
