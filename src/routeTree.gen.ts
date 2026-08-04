@@ -14,8 +14,30 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAgentsRouteImport } from './routes/app.agents'
 import { Route as AppChatRouteImport } from './routes/app.chat'
+import { Route as AppCompetitorsRouteImport } from './routes/app.competitors'
+import { Route as AppDeckRouteImport } from './routes/app.deck'
+import { Route as AppDocumentsRouteImport } from './routes/app.documents'
+import { Route as AppForecastRouteImport } from './routes/app.forecast'
+import { Route as AppGraphRouteImport } from './routes/app.graph'
 import { Route as AppHealthRouteImport } from './routes/app.health'
+import { Route as AppInvestorsRouteImport } from './routes/app.investors'
+import { Route as AppKnowledgeRouteImport } from './routes/app.knowledge'
+import { Route as AppLearningRouteImport } from './routes/app.learning'
+import { Route as AppMetricsRouteImport } from './routes/app.metrics'
+import { Route as AppOpportunitiesRouteImport } from './routes/app.opportunities'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
+import { Route as AppReasoningRouteImport } from './routes/app.reasoning'
+import { Route as AppResearchRouteImport } from './routes/app.research'
+import { Route as AppRoadmapRouteImport } from './routes/app.roadmap'
+import { Route as AppRunwayRouteImport } from './routes/app.runway'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppSimulatorRouteImport } from './routes/app.simulator'
+import { Route as AppTasksRouteImport } from './routes/app.tasks'
+import { Route as AppTimelineRouteImport } from './routes/app.timeline'
+import { Route as AppValidationRouteImport } from './routes/app.validation'
+import { Route as AppWorkspaceRouteImport } from './routes/app.workspace'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,14 +64,124 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgentsRoute = AppAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChatRoute = AppChatRouteImport.update({
   id: '/chat',
   path: '/chat',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCompetitorsRoute = AppCompetitorsRouteImport.update({
+  id: '/competitors',
+  path: '/competitors',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDeckRoute = AppDeckRouteImport.update({
+  id: '/deck',
+  path: '/deck',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppForecastRoute = AppForecastRouteImport.update({
+  id: '/forecast',
+  path: '/forecast',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGraphRoute = AppGraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppHealthRoute = AppHealthRouteImport.update({
   id: '/health',
   path: '/health',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvestorsRoute = AppInvestorsRouteImport.update({
+  id: '/investors',
+  path: '/investors',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKnowledgeRoute = AppKnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLearningRoute = AppLearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMetricsRoute = AppMetricsRouteImport.update({
+  id: '/metrics',
+  path: '/metrics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOpportunitiesRoute = AppOpportunitiesRouteImport.update({
+  id: '/opportunities',
+  path: '/opportunities',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReasoningRoute = AppReasoningRouteImport.update({
+  id: '/reasoning',
+  path: '/reasoning',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResearchRoute = AppResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRoadmapRoute = AppRoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRunwayRoute = AppRunwayRouteImport.update({
+  id: '/runway',
+  path: '/runway',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSimulatorRoute = AppSimulatorRouteImport.update({
+  id: '/simulator',
+  path: '/simulator',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTasksRoute = AppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTimelineRoute = AppTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppValidationRoute = AppValidationRouteImport.update({
+  id: '/validation',
+  path: '/validation',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWorkspaceRoute = AppWorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -58,16 +190,60 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/onboarding': typeof OnboardingRoute
+  '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
+  '/app/competitors': typeof AppCompetitorsRoute
+  '/app/deck': typeof AppDeckRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/forecast': typeof AppForecastRoute
+  '/app/graph': typeof AppGraphRoute
   '/app/health': typeof AppHealthRoute
+  '/app/investors': typeof AppInvestorsRoute
+  '/app/knowledge': typeof AppKnowledgeRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/metrics': typeof AppMetricsRoute
+  '/app/opportunities': typeof AppOpportunitiesRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/reasoning': typeof AppReasoningRoute
+  '/app/research': typeof AppResearchRoute
+  '/app/roadmap': typeof AppRoadmapRoute
+  '/app/runway': typeof AppRunwayRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/simulator': typeof AppSimulatorRoute
+  '/app/tasks': typeof AppTasksRoute
+  '/app/timeline': typeof AppTimelineRoute
+  '/app/validation': typeof AppValidationRoute
+  '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof OnboardingRoute
+  '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
+  '/app/competitors': typeof AppCompetitorsRoute
+  '/app/deck': typeof AppDeckRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/forecast': typeof AppForecastRoute
+  '/app/graph': typeof AppGraphRoute
   '/app/health': typeof AppHealthRoute
+  '/app/investors': typeof AppInvestorsRoute
+  '/app/knowledge': typeof AppKnowledgeRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/metrics': typeof AppMetricsRoute
+  '/app/opportunities': typeof AppOpportunitiesRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/reasoning': typeof AppReasoningRoute
+  '/app/research': typeof AppResearchRoute
+  '/app/roadmap': typeof AppRoadmapRoute
+  '/app/runway': typeof AppRunwayRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/simulator': typeof AppSimulatorRoute
+  '/app/tasks': typeof AppTasksRoute
+  '/app/timeline': typeof AppTimelineRoute
+  '/app/validation': typeof AppValidationRoute
+  '/app/workspace': typeof AppWorkspaceRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -76,8 +252,30 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/onboarding': typeof OnboardingRoute
+  '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
+  '/app/competitors': typeof AppCompetitorsRoute
+  '/app/deck': typeof AppDeckRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/forecast': typeof AppForecastRoute
+  '/app/graph': typeof AppGraphRoute
   '/app/health': typeof AppHealthRoute
+  '/app/investors': typeof AppInvestorsRoute
+  '/app/knowledge': typeof AppKnowledgeRoute
+  '/app/learning': typeof AppLearningRoute
+  '/app/metrics': typeof AppMetricsRoute
+  '/app/opportunities': typeof AppOpportunitiesRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/reasoning': typeof AppReasoningRoute
+  '/app/research': typeof AppResearchRoute
+  '/app/roadmap': typeof AppRoadmapRoute
+  '/app/runway': typeof AppRunwayRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/simulator': typeof AppSimulatorRoute
+  '/app/tasks': typeof AppTasksRoute
+  '/app/timeline': typeof AppTimelineRoute
+  '/app/validation': typeof AppValidationRoute
+  '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -87,19 +285,91 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/onboarding'
+    | '/app/agents'
     | '/app/chat'
+    | '/app/competitors'
+    | '/app/deck'
+    | '/app/documents'
+    | '/app/forecast'
+    | '/app/graph'
     | '/app/health'
+    | '/app/investors'
+    | '/app/knowledge'
+    | '/app/learning'
+    | '/app/metrics'
+    | '/app/opportunities'
+    | '/app/profile'
+    | '/app/reasoning'
+    | '/app/research'
+    | '/app/roadmap'
+    | '/app/runway'
+    | '/app/settings'
+    | '/app/simulator'
+    | '/app/tasks'
+    | '/app/timeline'
+    | '/app/validation'
+    | '/app/workspace'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/onboarding' | '/app/chat' | '/app/health' | '/app'
+  to:
+    | '/'
+    | '/auth'
+    | '/onboarding'
+    | '/app/agents'
+    | '/app/chat'
+    | '/app/competitors'
+    | '/app/deck'
+    | '/app/documents'
+    | '/app/forecast'
+    | '/app/graph'
+    | '/app/health'
+    | '/app/investors'
+    | '/app/knowledge'
+    | '/app/learning'
+    | '/app/metrics'
+    | '/app/opportunities'
+    | '/app/profile'
+    | '/app/reasoning'
+    | '/app/research'
+    | '/app/roadmap'
+    | '/app/runway'
+    | '/app/settings'
+    | '/app/simulator'
+    | '/app/tasks'
+    | '/app/timeline'
+    | '/app/validation'
+    | '/app/workspace'
+    | '/app'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/auth'
     | '/onboarding'
+    | '/app/agents'
     | '/app/chat'
+    | '/app/competitors'
+    | '/app/deck'
+    | '/app/documents'
+    | '/app/forecast'
+    | '/app/graph'
     | '/app/health'
+    | '/app/investors'
+    | '/app/knowledge'
+    | '/app/learning'
+    | '/app/metrics'
+    | '/app/opportunities'
+    | '/app/profile'
+    | '/app/reasoning'
+    | '/app/research'
+    | '/app/roadmap'
+    | '/app/runway'
+    | '/app/settings'
+    | '/app/simulator'
+    | '/app/tasks'
+    | '/app/timeline'
+    | '/app/validation'
+    | '/app/workspace'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -147,11 +417,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/agents': {
+      id: '/app/agents'
+      path: '/agents'
+      fullPath: '/app/agents'
+      preLoaderRoute: typeof AppAgentsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/chat': {
       id: '/app/chat'
       path: '/chat'
       fullPath: '/app/chat'
       preLoaderRoute: typeof AppChatRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/competitors': {
+      id: '/app/competitors'
+      path: '/competitors'
+      fullPath: '/app/competitors'
+      preLoaderRoute: typeof AppCompetitorsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/deck': {
+      id: '/app/deck'
+      path: '/deck'
+      fullPath: '/app/deck'
+      preLoaderRoute: typeof AppDeckRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/documents': {
+      id: '/app/documents'
+      path: '/documents'
+      fullPath: '/app/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/forecast': {
+      id: '/app/forecast'
+      path: '/forecast'
+      fullPath: '/app/forecast'
+      preLoaderRoute: typeof AppForecastRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/graph': {
+      id: '/app/graph'
+      path: '/graph'
+      fullPath: '/app/graph'
+      preLoaderRoute: typeof AppGraphRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/health': {
@@ -161,18 +473,174 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHealthRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/investors': {
+      id: '/app/investors'
+      path: '/investors'
+      fullPath: '/app/investors'
+      preLoaderRoute: typeof AppInvestorsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/knowledge': {
+      id: '/app/knowledge'
+      path: '/knowledge'
+      fullPath: '/app/knowledge'
+      preLoaderRoute: typeof AppKnowledgeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/learning': {
+      id: '/app/learning'
+      path: '/learning'
+      fullPath: '/app/learning'
+      preLoaderRoute: typeof AppLearningRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/metrics': {
+      id: '/app/metrics'
+      path: '/metrics'
+      fullPath: '/app/metrics'
+      preLoaderRoute: typeof AppMetricsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/opportunities': {
+      id: '/app/opportunities'
+      path: '/opportunities'
+      fullPath: '/app/opportunities'
+      preLoaderRoute: typeof AppOpportunitiesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reasoning': {
+      id: '/app/reasoning'
+      path: '/reasoning'
+      fullPath: '/app/reasoning'
+      preLoaderRoute: typeof AppReasoningRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/research': {
+      id: '/app/research'
+      path: '/research'
+      fullPath: '/app/research'
+      preLoaderRoute: typeof AppResearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/roadmap': {
+      id: '/app/roadmap'
+      path: '/roadmap'
+      fullPath: '/app/roadmap'
+      preLoaderRoute: typeof AppRoadmapRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/runway': {
+      id: '/app/runway'
+      path: '/runway'
+      fullPath: '/app/runway'
+      preLoaderRoute: typeof AppRunwayRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/simulator': {
+      id: '/app/simulator'
+      path: '/simulator'
+      fullPath: '/app/simulator'
+      preLoaderRoute: typeof AppSimulatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tasks': {
+      id: '/app/tasks'
+      path: '/tasks'
+      fullPath: '/app/tasks'
+      preLoaderRoute: typeof AppTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/timeline': {
+      id: '/app/timeline'
+      path: '/timeline'
+      fullPath: '/app/timeline'
+      preLoaderRoute: typeof AppTimelineRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/validation': {
+      id: '/app/validation'
+      path: '/validation'
+      fullPath: '/app/validation'
+      preLoaderRoute: typeof AppValidationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/workspace': {
+      id: '/app/workspace'
+      path: '/workspace'
+      fullPath: '/app/workspace'
+      preLoaderRoute: typeof AppWorkspaceRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAgentsRoute: typeof AppAgentsRoute
   AppChatRoute: typeof AppChatRoute
+  AppCompetitorsRoute: typeof AppCompetitorsRoute
+  AppDeckRoute: typeof AppDeckRoute
+  AppDocumentsRoute: typeof AppDocumentsRoute
+  AppForecastRoute: typeof AppForecastRoute
+  AppGraphRoute: typeof AppGraphRoute
   AppHealthRoute: typeof AppHealthRoute
+  AppInvestorsRoute: typeof AppInvestorsRoute
+  AppKnowledgeRoute: typeof AppKnowledgeRoute
+  AppLearningRoute: typeof AppLearningRoute
+  AppMetricsRoute: typeof AppMetricsRoute
+  AppOpportunitiesRoute: typeof AppOpportunitiesRoute
+  AppProfileRoute: typeof AppProfileRoute
+  AppReasoningRoute: typeof AppReasoningRoute
+  AppResearchRoute: typeof AppResearchRoute
+  AppRoadmapRoute: typeof AppRoadmapRoute
+  AppRunwayRoute: typeof AppRunwayRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppSimulatorRoute: typeof AppSimulatorRoute
+  AppTasksRoute: typeof AppTasksRoute
+  AppTimelineRoute: typeof AppTimelineRoute
+  AppValidationRoute: typeof AppValidationRoute
+  AppWorkspaceRoute: typeof AppWorkspaceRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAgentsRoute: AppAgentsRoute,
   AppChatRoute: AppChatRoute,
+  AppCompetitorsRoute: AppCompetitorsRoute,
+  AppDeckRoute: AppDeckRoute,
+  AppDocumentsRoute: AppDocumentsRoute,
+  AppForecastRoute: AppForecastRoute,
+  AppGraphRoute: AppGraphRoute,
   AppHealthRoute: AppHealthRoute,
+  AppInvestorsRoute: AppInvestorsRoute,
+  AppKnowledgeRoute: AppKnowledgeRoute,
+  AppLearningRoute: AppLearningRoute,
+  AppMetricsRoute: AppMetricsRoute,
+  AppOpportunitiesRoute: AppOpportunitiesRoute,
+  AppProfileRoute: AppProfileRoute,
+  AppReasoningRoute: AppReasoningRoute,
+  AppResearchRoute: AppResearchRoute,
+  AppRoadmapRoute: AppRoadmapRoute,
+  AppRunwayRoute: AppRunwayRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppSimulatorRoute: AppSimulatorRoute,
+  AppTasksRoute: AppTasksRoute,
+  AppTimelineRoute: AppTimelineRoute,
+  AppValidationRoute: AppValidationRoute,
+  AppWorkspaceRoute: AppWorkspaceRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
