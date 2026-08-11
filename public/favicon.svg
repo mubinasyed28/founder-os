@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="100%" stop-color="#4FACFE" />
+    </linearGradient>
+  </defs>
+  <!-- Futuristic hexagon / diamond node shape -->
+  <path d="M16 4 L28 10 L28 22 L16 28 L4 22 L4 10 Z" fill="none" stroke="url(#grad)" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="16" cy="16" r="4" fill="url(#grad)" />
+  <circle cx="16" cy="4" r="2.5" fill="#00F2FE" />
+  <circle cx="28" cy="10" r="2.5" fill="#4FACFE" />
+  <circle cx="28" cy="22" r="2.5" fill="#4FACFE" />
+  <circle cx="16" cy="28" r="2.5" fill="#00F2FE" />
+  <circle cx="4" cy="22" r="2.5" fill="#00F2FE" />
+  <circle cx="4" cy="10" r="2.5" fill="#00F2FE" />
+</svg>

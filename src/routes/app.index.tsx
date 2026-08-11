@@ -23,16 +23,26 @@ export const Route = createFileRoute("/app/")({
 
 const chartAxis = { stroke: "var(--muted-foreground)", fontSize: 11 };
 
+import { useAuth } from "@/lib/auth-context";
+
 function Dashboard() {
   const { metrics, overall, activity, tasks } = useOs();
+  const { user } = useAuth();
   const openTasks = tasks.filter((t) => !t.done).length;
+
+  const displayName = user?.username
+    ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
+    : "Founder";
+
+  const companyName = useOs().profile["company_name"] || company.name;
+  const companyStage = useOs().profile["current_stage"] || company.stage;
 
   return (
     <>
       <PageHeader
         eyebrow="Morning briefing · 04 Aug"
-        title={`Good morning, Meera`}
-        subtitle={`${company.name} · ${company.stage}. Overnight your agents ran 14 jobs, verified 9 sources and found one decision that can't wait.`}
+        title={`Good morning, ${displayName}`}
+        subtitle={`${companyName} · ${companyStage}. Overnight your agents ran 14 jobs, verified 9 sources and found one decision that can't wait.`}
         actions={
           <Link
             to="/app/chat"
