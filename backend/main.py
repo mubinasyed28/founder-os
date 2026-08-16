@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import init_db
-from backend.routers import auth, onboarding, documents, chat, health
+from backend.routers import auth, onboarding, documents, chat, health, competitors
 
 app = FastAPI(
     title="Cofoundr OS API",
@@ -39,6 +39,7 @@ app.include_router(onboarding.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
 app.include_router(health.router)
+app.include_router(competitors.router)
 
 if __name__ == "__main__":
     import uvicorn

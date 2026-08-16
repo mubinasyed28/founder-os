@@ -10,7 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { OsProvider } from "../lib/os-store";
+import { OsProvider } from "@/lib/os-store";
 
 
 function NotFoundComponent() {

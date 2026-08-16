@@ -266,4 +266,31 @@ export async function recalculateHealthApi(): Promise<any> {
   });
 }
 
+// ── Competitor Intelligence Endpoints ─────────────────────────────────
+
+export async function startCompetitorResearchApi(): Promise<{ success: boolean; research_id: string; status: string }> {
+  return apiRequest("/competitors/research", {
+    method: "POST",
+  });
+}
+
+export async function getResearchStatusApi(): Promise<{ status: string; started_at?: string; completed_at?: string; error_message?: string }> {
+  return apiRequest("/competitors/research/status");
+}
+
+export async function getCompetitorResultsApi(): Promise<{
+  id: string;
+  competitors: any[];
+  comparison?: { dimensions: any[]; summary: string };
+  gaps: any[];
+  research_status: string;
+}> {
+  return apiRequest("/competitors/results");
+}
+
+export async function getCompetitorDetailApi(id: string): Promise<any> {
+  return apiRequest(`/competitors/${id}`);
+}
+
+
 

@@ -147,4 +147,67 @@ class RagChatResponse(BaseModel):
     sources: List[str]
     conversationId: str
 
+# ── Competitor Research Models ───────────────────────────────────────
+
+class CompetitorSource(BaseModel):
+    title: str = ""
+    url: str = ""
+    domain: str = ""
+    snippet: str = ""
+    retrieved_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CompetitorProfile(BaseModel):
+    id: str = ""
+    name: str = ""
+    website: str = ""
+    description: str = ""
+    industry: str = ""
+    founded_year: Optional[str] = None
+    location: Optional[str] = None
+    target_customers: str = ""
+    products_services: List[str] = Field(default_factory=list)
+    key_features: List[str] = Field(default_factory=list)
+    business_model: str = ""
+    mission: Optional[str] = None
+    vision: Optional[str] = None
+    value_proposition: str = ""
+    pricing: Optional[str] = None
+    funding: Optional[str] = None
+    investors: Optional[str] = None
+    recent_activity: List[str] = Field(default_factory=list)
+    relevant_news: List[str] = Field(default_factory=list)
+    strengths: List[str] = Field(default_factory=list)
+    weaknesses: List[str] = Field(default_factory=list)
+    competitive_relevance: str = ""
+    relevance_score: int = 0  # 0-100
+    sources: List[CompetitorSource] = Field(default_factory=list)
+
+class CompetitorComparisonDimension(BaseModel):
+    dimension: str = ""
+    startup: str = ""
+    competitors_summary: str = ""
+
+class CompetitorComparison(BaseModel):
+    dimensions: List[CompetitorComparisonDimension] = Field(default_factory=list)
+    summary: str = ""
+
+class CompetitiveGap(BaseModel):
+    title: str = ""
+    description: str = ""
+    evidence: str = ""
+    gap_type: str = ""  # "feature", "market", "pricing", "positioning"
+    confidence: int = 0  # 0-100
+
+class CompetitorResearchResult(BaseModel):
+    id: str = ""
+    user_id: str = ""
+    competitors: List[CompetitorProfile] = Field(default_factory=list)
+    comparison: Optional[CompetitorComparison] = None
+    gaps: List[CompetitiveGap] = Field(default_factory=list)
+    research_status: str = "pending"  # pending, running, completed, failed
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    startup_context_used: Dict[str, Any] = Field(default_factory=dict)
+    error_message: Optional[str] = None
+
 

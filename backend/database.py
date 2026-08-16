@@ -40,5 +40,8 @@ async def init_db():
     # Health report indexes
     await database.health_reports.create_index("user_id")
     
+    # Competitor research indexes
+    await database.competitor_research.create_index("user_id")
+    
     print("[db] MongoDB connected & indexes initialized successfully.")
 

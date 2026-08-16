@@ -38,6 +38,7 @@ import { Route as AppTasksRouteImport } from './routes/app.tasks'
 import { Route as AppTimelineRouteImport } from './routes/app.timeline'
 import { Route as AppValidationRouteImport } from './routes/app.validation'
 import { Route as AppWorkspaceRouteImport } from './routes/app.workspace'
+import { Route as AppCompetitorsIdRouteImport } from './routes/app.competitors.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -184,6 +185,11 @@ const AppWorkspaceRoute = AppWorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCompetitorsIdRoute = AppCompetitorsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppCompetitorsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -192,7 +198,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
-  '/app/competitors': typeof AppCompetitorsRoute
+  '/app/competitors': typeof AppCompetitorsRouteWithChildren
   '/app/deck': typeof AppDeckRoute
   '/app/documents': typeof AppDocumentsRoute
   '/app/forecast': typeof AppForecastRoute
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/app/validation': typeof AppValidationRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
+  '/app/competitors/$id': typeof AppCompetitorsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -222,7 +229,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
-  '/app/competitors': typeof AppCompetitorsRoute
+  '/app/competitors': typeof AppCompetitorsRouteWithChildren
   '/app/deck': typeof AppDeckRoute
   '/app/documents': typeof AppDocumentsRoute
   '/app/forecast': typeof AppForecastRoute
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/app/validation': typeof AppValidationRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/app': typeof AppIndexRoute
+  '/app/competitors/$id': typeof AppCompetitorsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -254,7 +262,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
-  '/app/competitors': typeof AppCompetitorsRoute
+  '/app/competitors': typeof AppCompetitorsRouteWithChildren
   '/app/deck': typeof AppDeckRoute
   '/app/documents': typeof AppDocumentsRoute
   '/app/forecast': typeof AppForecastRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/app/validation': typeof AppValidationRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/app/': typeof AppIndexRoute
+  '/app/competitors/$id': typeof AppCompetitorsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/app/validation'
     | '/app/workspace'
     | '/app/'
+    | '/app/competitors/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/app/validation'
     | '/app/workspace'
     | '/app'
+    | '/app/competitors/$id'
   id:
     | '__root__'
     | '/'
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/app/validation'
     | '/app/workspace'
     | '/app/'
+    | '/app/competitors/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -585,13 +597,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWorkspaceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/competitors/$id': {
+      id: '/app/competitors/$id'
+      path: '/$id'
+      fullPath: '/app/competitors/$id'
+      preLoaderRoute: typeof AppCompetitorsIdRouteImport
+      parentRoute: typeof AppCompetitorsRoute
+    }
   }
 }
+
+interface AppCompetitorsRouteChildren {
+  AppCompetitorsIdRoute: typeof AppCompetitorsIdRoute
+}
+
+const AppCompetitorsRouteChildren: AppCompetitorsRouteChildren = {
+  AppCompetitorsIdRoute: AppCompetitorsIdRoute,
+}
+
+const AppCompetitorsRouteWithChildren = AppCompetitorsRoute._addFileChildren(
+  AppCompetitorsRouteChildren,
+)
 
 interface AppRouteChildren {
   AppAgentsRoute: typeof AppAgentsRoute
   AppChatRoute: typeof AppChatRoute
-  AppCompetitorsRoute: typeof AppCompetitorsRoute
+  AppCompetitorsRoute: typeof AppCompetitorsRouteWithChildren
   AppDeckRoute: typeof AppDeckRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppForecastRoute: typeof AppForecastRoute
@@ -619,7 +650,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgentsRoute: AppAgentsRoute,
   AppChatRoute: AppChatRoute,
-  AppCompetitorsRoute: AppCompetitorsRoute,
+  AppCompetitorsRoute: AppCompetitorsRouteWithChildren,
   AppDeckRoute: AppDeckRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppForecastRoute: AppForecastRoute,
