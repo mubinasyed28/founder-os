@@ -340,14 +340,87 @@ export const recommendations: Recommendation[] = [
   },
 ];
 
+export type OpportunityStatus = "detected" | "evaluating" | "validating" | "pursued" | "parked" | "rejected";
+
+export type OpportunityEvidence = {
+  claim: string;
+  source: string;
+  type: "fact" | "inference" | "assumption";
+  verified: boolean;
+};
+
+export type EpistemicBreakdown = {
+  facts: string[];
+  inferences: string[];
+  assumptions: string[];
+};
+
+export type ValidationExperiment = {
+  id: string;
+  hypothesis: string;
+  test: string;
+  metric: string;
+  effort: "Hours" | "1-2 days" | "1 week";
+  status: "pending" | "passed" | "failed";
+};
+
+export type HealthImpact = {
+  metricKey: string;
+  label: string;
+  expectedDelta: number;
+  reason: string;
+};
+
+export type OpportunityDecision = {
+  decision: "pursue" | "park" | "reject" | "validate";
+  decidedAt: string;
+  reasoning: string;
+  actionSummary: string;
+  createdTaskIds?: string[];
+  memoryEventId?: string;
+};
+
 export type Opportunity = {
   id: string;
   title: string;
-  type: string;
+  type: "Feature gap" | "Market gap" | "Pricing gap" | "Positioning gap" | "Blue ocean";
+  status: OpportunityStatus;
   confidence: number;
-  size: string;
+  size: "Low" | "Medium" | "High" | "Very high" | "Speculative";
   detail: string;
   signal: string;
+  detectedAt: string;
+
+  // Understand
+  whyFound: string;
+  startupFit: string;
+  epistemic: EpistemicBreakdown;
+  evidence: OpportunityEvidence[];
+
+  // Evaluate
+  healthImpacts: HealthImpact[];
+  risks: string[];
+  effort: "Low" | "Medium" | "High";
+  timeToImpact: string;
+
+  // Validate
+  uncertainties: string[];
+  validationExperiments: ValidationExperiment[];
+
+  // Recommended Next Step
+  recommendedAction: {
+    label: string;
+    description: string;
+    suggestedDecision: "pursue" | "validate" | "park";
+  };
+
+  // OS Links
+  linkedCompetitors: string[];
+  linkedResearchQuery?: string;
+  linkedSimulatorScenario?: string;
+
+  // Decision record (if decided)
+  decisionRecord?: OpportunityDecision;
 };
 
 export const opportunities: Opportunity[] = [
@@ -355,51 +428,398 @@ export const opportunities: Opportunity[] = [
     id: "O-51",
     title: "No competitor handles exam-cycle re-planning after a missed week",
     type: "Feature gap",
+    status: "validating",
     confidence: 88,
     size: "High",
     detail:
       "All six tracked competitors treat plans as static. 41% of your churn interviews cite 'fell behind and gave up'. An automatic re-plan is a wedge nobody occupies.",
     signal: "6/6 competitors lack it · 41% of churn reasons",
+    detectedAt: "Jul 28, 2026",
+    whyFound:
+      "Cross-referenced churn interview transcripts (batch #3) against competitor changelogs. While competitors ship scheduling and calendar syncs, none recalculate study pacing when a student misses study blocks.",
+    startupFit:
+      "Directly addresses Lumen Labs' primary ICP problem: STEM undergrads cramming for high-stakes exams who drop out of rigid study calendars once real-world coursework disrupts their routine.",
+    epistemic: {
+      facts: [
+        "41% of churn interviews specifically cite falling behind on schedule as the primary reason for abandonment.",
+        "None of the 6 tracked competitors (StudyOS, Cramly, Notely, PlanPal, Chalk, Generic LLM) feature dynamic re-balancing algorithms in their documented feature sets.",
+        "StudyOS launched an AI planner on Jul 20 that retains static calendar output."
+      ],
+      inferences: [
+        "Students do not churn due to lack of study motivation, but due to psychological guilt and cognitive friction of manually rebuilding a broken schedule.",
+        "An automated 1-click schedule recalibration algorithm will lift D30 retention by an estimated 2.8-4.2 percentage points."
+      ],
+      assumptions: [
+        "Students will trust an automated heuristic to compress syllabus deadlines without sacrificing exam readiness.",
+        "Building a reliable re-planning engine requires less than 2 engineer sprints without increasing inference latency."
+      ]
+    },
+    evidence: [
+      {
+        claim: "41% churn rate attributable to missed study schedules",
+        source: "12 Customer Interview Transcripts (Doc D-113)",
+        type: "fact",
+        verified: true
+      },
+      {
+        claim: "All 6 category incumbents treat plans as static calendars",
+        source: "Competitor Intel & Changelog Scan (StudyOS, Cramly, Notely)",
+        type: "fact",
+        verified: true
+      },
+      {
+        claim: "Dynamic re-planning serves as a defensible retention wedge",
+        source: "Strategy Agent Synthesis & D30 Retention Model",
+        type: "inference",
+        verified: true
+      }
+    ],
+    healthImpacts: [
+      { metricKey: "product", label: "Product Score", expectedDelta: +6, reason: "Directly solves the #1 churn driver and improves D30 retention." },
+      { metricKey: "growth", label: "Growth Score", expectedDelta: +4, reason: "Increases organic word-of-mouth referral among study cohorts." },
+      { metricKey: "market", label: "Market Position", expectedDelta: +8, reason: "Carves out an uncontested algorithmic moat vs StudyOS." }
+    ],
+    risks: [
+      "StudyOS or Notely could copy the re-planning heuristic within 6-8 weeks if it gains public traction.",
+      "Algorithmic re-pacing might recommend unrealistic study loads per day if total hours required exceeds remaining exam days."
+    ],
+    effort: "Medium",
+    timeToImpact: "3-4 weeks",
+    uncertainties: [
+      "Do students prefer automatic schedule re-sorting or an interactive prompt asking which topics to deprioritize?",
+      "Will students perceive the re-planned schedule as authoritative or demoralizing if syllabus hours are compressed?"
+    ],
+    validationExperiments: [
+      {
+        id: "exp-1",
+        hypothesis: "Students who receive a simulated re-planned schedule re-engage at >60% rate within 48 hours.",
+        test: "Manual 'concierge' re-planning test with 10 recently lapsed users via WhatsApp/email.",
+        metric: "6/10 re-engagement",
+        effort: "1-2 days",
+        status: "passed"
+      },
+      {
+        id: "exp-2",
+        hypothesis: "A banner prompt 'Fell behind? Re-balance your schedule in 1 click' achieves >25% click-through.",
+        test: "Fake-door UI prompt inside student dashboard when 3+ overdue tasks accumulate.",
+        metric: "CTR > 25%",
+        effort: "Hours",
+        status: "pending"
+      }
+    ],
+    recommendedAction: {
+      label: "Validate via UI Fake-Door & Fast-Track to Sprint Q3",
+      description: "Complete experiment exp-2 to confirm intent, then trigger Task T-93 ('Draft auto re-plan spec') to begin architecture.",
+      suggestedDecision: "validate"
+    },
+    linkedCompetitors: ["StudyOS", "Cramly", "Notely"],
+    linkedResearchQuery: "Is exam-cycle re-planning served by any incumbent?",
+    linkedSimulatorScenario: "feature"
   },
   {
     id: "O-49",
     title: "Tier-2 university market is entirely unserved in regional languages",
     type: "Market gap",
+    status: "detected",
     confidence: 74,
     size: "Very high",
     detail:
       "4.1M STEM students outside tier-1 cities. Zero tracked competitor ships Hindi or Tamil interfaces. CAC in this segment is estimated 62% lower.",
     signal: "0 competitors · 4.1M TAM",
+    detectedAt: "Jul 25, 2026",
+    whyFound:
+      "Demographic scan of AISHE 2025 higher education census combined with search keyword trends in Madhya Pradesh, Uttar Pradesh, and Tamil Nadu.",
+    startupFit:
+      "Lumen Labs' campus ambassador network already has early grassroots penetration in 3 tier-2 state engineering universities (Bhopal, Coimbatore, Jaipur).",
+    epistemic: {
+      facts: [
+        "4.1 million STEM undergraduates are enrolled in non-metro engineering colleges in India.",
+        "Zero funded competitors offer Hindi or Tamil localized student onboarding or study plans.",
+        "Google Trends indicates a 48% YoY rise in vernacular search queries for engineering semester prep."
+      ],
+      inferences: [
+        "Customer Acquisition Cost (CAC) in tier-2 cities is 60%+ lower due to lower paid ad competition and tighter college WhatsApp groups.",
+        "Multilingual localized UI creates a strong cultural moat against US-centric tools."
+      ],
+      assumptions: [
+        "Tier-2 students have comparable willingness-to-pay at ₹299-₹399/mo despite lower pocket allowance.",
+        "Translating UI and syllabus taxonomy to Hindi/Tamil will not cause significant technical maintenance overhead."
+      ]
+    },
+    evidence: [
+      {
+        claim: "4.1M addressable STEM student enrollment in non-metro colleges",
+        source: "AISHE 2025 Higher Education Census & Redseer Report",
+        type: "fact",
+        verified: true
+      },
+      {
+        claim: "CAC in regional non-metro channels is estimated 62% below metro benchmark",
+        source: "Research Agent Market Query & Campus Ambassador Pilot",
+        type: "inference",
+        verified: false
+      }
+    ],
+    healthImpacts: [
+      { metricKey: "growth", label: "Growth Score", expectedDelta: +12, reason: "Unlocks a 4.1M user expansion market with high organic virality." },
+      { metricKey: "financial", label: "Financial Health", expectedDelta: +5, reason: "High volume at ₹299 raises total top-line revenue." },
+      { metricKey: "product", label: "Product Complexity", expectedDelta: -3, reason: "Increases content moderation and localized syllabus overhead." }
+    ],
+    risks: [
+      "Lower willingness to pay (WTP) might degrade blended ARPU.",
+      "Payment gateway drop-offs higher with UPI mandates in rural/semi-urban banking."
+    ],
+    effort: "High",
+    timeToImpact: "8-12 weeks",
+    uncertainties: [
+      "Is English still preferred for technical exam terminology even if explanations are in Hindi/Tamil?",
+      "What is the actual conversion rate on UPI autopay at ₹299/mo in tier-2 colleges?"
+    ],
+    validationExperiments: [
+      {
+        id: "exp-3",
+        hypothesis: "Regional landing page copy in Hinglish achieves >18% conversion to waitlist.",
+        test: "Launch a bilingual waitlist page targeted at 3 tier-2 universities.",
+        metric: "Waitlist signups > 500",
+        effort: "1-2 days",
+        status: "pending"
+      }
+    ],
+    recommendedAction: {
+      label: "Park Until Q4 After Core Retention Stabilizes",
+      description: "Opening a new geographic segment before fixing current onboarding retention risks leaking users out of a leaky bucket.",
+      suggestedDecision: "park"
+    },
+    linkedCompetitors: ["Chalk", "Cramly"],
+    linkedResearchQuery: "Tier-2 regional-language demand",
+    linkedSimulatorScenario: "country"
   },
   {
     id: "O-47",
     title: "Group/cohort pricing is missing across the category",
     type: "Pricing gap",
+    status: "detected",
     confidence: 81,
     size: "Medium",
     detail:
       "Students buy in study groups. A 4-seat plan at ₹1,799 raises ARPU while lowering per-seat cost — no tracked competitor offers seats.",
     signal: "0/6 competitors · 3 inbound requests",
+    detectedAt: "Jul 22, 2026",
+    whyFound:
+      "Advisor sync with Ravi K. highlighted uncaptured viral buying units in university hostels, supported by 3 customer support tickets requesting shared subscriptions.",
+    startupFit:
+      "Fits Lumen Labs' organic campus ambassador loop. Study groups naturally share notes and schedules together.",
+    epistemic: {
+      facts: [
+        "3 separate user inbound requests specifically requested splitting Pro subscriptions with hostel lab partners.",
+        "No competitor in the exam preparation space offers a multi-seat student bundle.",
+        "Current Pro individual plan is ₹499/mo."
+      ],
+      inferences: [
+        "A 4-seat bundle at ₹1,799 (₹450/seat) increases gross contract value per transaction by 260% with zero incremental sales cost.",
+        "Account sharing will decrease because each student receives their own authenticated study schedule."
+      ],
+      assumptions: [
+        "One 'champion' student will front the payment and collect funds from their peers via UPI.",
+        "Group retention will be higher than individual retention due to peer accountability."
+      ]
+    },
+    evidence: [
+      {
+        claim: "Students study and purchase in organic peer units of 3-5 students",
+        source: "Advisor Sync notes — Ravi K. (Doc M-110)",
+        type: "fact",
+        verified: true
+      },
+      {
+        claim: "Zero multi-seat plans exist in tracked competitor pricing tables",
+        source: "Competitor Pricing Audit (StudyOS ₹749, Cramly ₹599, Notely ₹899)",
+        type: "fact",
+        verified: true
+      }
+    ],
+    healthImpacts: [
+      { metricKey: "financial", label: "Financial Health", expectedDelta: +8, reason: "Immediate ARPU expansion and upfront cash flow collection." },
+      { metricKey: "growth", label: "Growth Score", expectedDelta: +6, reason: "1 buyer brings 3 active students into the app automatically." }
+    ],
+    risks: [
+      "If the buyer churns, all 4 seats may churn simultaneously.",
+      "Complexity in invite mechanics and seat management."
+    ],
+    effort: "Low",
+    timeToImpact: "1-2 weeks",
+    uncertainties: [
+      "Will students prefer semester-based lump sums (₹4,999/sem for 4 seats) or monthly billing (₹1,799/mo)?",
+      "How do we handle seat transfers if a student drops a course?"
+    ],
+    validationExperiments: [
+      {
+        id: "exp-4",
+        hypothesis: "Offering a 'Study Group Pack' checkout option achieves >12% of new paid volume.",
+        test: "Add a checkout tier option for 'Study Group (4 seats)' on the upgrade modal.",
+        metric: "10 group purchases in 14 days",
+        effort: "1-2 days",
+        status: "pending"
+      }
+    ],
+    recommendedAction: {
+      label: "Pursue Immediately via Stripe/Razorpay Multi-Seat Checkout",
+      description: "Low engineering lift with immediate positive impact on cash and ARPU.",
+      suggestedDecision: "pursue"
+    },
+    linkedCompetitors: ["StudyOS", "Notely"],
+    linkedResearchQuery: "Indian student willingness-to-pay for study tools",
+    linkedSimulatorScenario: "price"
   },
   {
     id: "O-44",
     title: "Positioning as 'planner' undersells the outcome",
     type: "Positioning gap",
+    status: "pursued",
     confidence: 66,
     size: "Medium",
     detail:
       "Landing page A/B suggests 'get your grade back on track' outperforms 'plan your study time' by 31% on signup intent.",
     signal: "+31% intent in copy test",
+    detectedAt: "Jul 18, 2026",
+    whyFound:
+      "Exploratory copy split-test run on paid landing page traffic targeting exam-prep search keywords.",
+    startupFit:
+      "Directly reframes Lumen Labs from an organizational utility (low WTP) to an academic insurance policy (high WTP).",
+    epistemic: {
+      facts: [
+        "Outcome-focused headline yielded +31% email signups over a 400-visitor sample.",
+        "Competitors like Notely and StudyOS consistently brand as 'All-in-one AI study workspace' or 'Smart study planner'."
+      ],
+      inferences: [
+        "Students do not want to 'plan'; planning feels like work. Students want to avoid failing exams and regain control of their grades.",
+        "Outcome positioning supports premium pricing power (₹699+)."
+      ],
+      assumptions: [
+        "Higher signup intent will translate into downstream paid conversion rather than just casual tire-kickers."
+      ]
+    },
+    evidence: [
+      {
+        claim: "+31% signup intent from outcome-oriented positioning",
+        source: "Landing Page Copy A/B Test Results (Jul 12-18)",
+        type: "fact",
+        verified: true
+      }
+    ],
+    healthImpacts: [
+      { metricKey: "growth", label: "Growth Score", expectedDelta: +5, reason: "Lifts top-of-funnel conversion without increasing marketing spend." },
+      { metricKey: "market", label: "Market Defensibility", expectedDelta: +4, reason: "Separates brand perception from generic planner utilities." }
+    ],
+    risks: [
+      "Over-promising academic outcomes could increase refund requests if students fail to do the recommended work."
+    ],
+    effort: "Low",
+    timeToImpact: "1 week",
+    uncertainties: [
+      "Does this headline resonate equally across engineering, medical, and general science students?"
+    ],
+    validationExperiments: [
+      {
+        id: "exp-5",
+        hypothesis: "New landing page hero converts at >8.5% across organic campus traffic.",
+        test: "Deploy winner copy to 100% of organic traffic.",
+        metric: "Conversion rate > 8.5%",
+        effort: "Hours",
+        status: "passed"
+      }
+    ],
+    recommendedAction: {
+      label: "Deploy Winner Copy Sitewide and Update Deck Narrative",
+      description: "Decision approved: Update all app metadata, pitch deck slide #2, and onboarding welcome copy.",
+      suggestedDecision: "pursue"
+    },
+    linkedCompetitors: ["StudyOS", "Notely", "PlanPal"],
+    linkedSimulatorScenario: "marketing",
+    decisionRecord: {
+      decision: "pursue",
+      decidedAt: "Jul 24, 2026",
+      reasoning: "Validated with 31% lift in intent. Outcome-based framing aligns with our auto-replan strategy.",
+      actionSummary: "Shipped copy update to production landing page. Task T-90 created.",
+      createdTaskIds: ["T-90"],
+      memoryEventId: "M-116"
+    }
   },
   {
     id: "O-40",
     title: "Blue ocean: employer-verified skill transcripts",
     type: "Blue ocean",
+    status: "parked",
     confidence: 52,
     size: "Speculative",
     detail:
       "Your data already proves consistent study behaviour. Nobody converts that into a credential recruiters trust. Long horizon, high defensibility.",
     signal: "No category incumbent",
+    detectedAt: "Jul 10, 2026",
+    whyFound:
+      "Knowledge graph clustering between student daily study consistency nodes and pre-seed pitch deck defensibility gap.",
+    startupFit:
+      "Transforms student usage logs into a two-sided network effect where recruiters pay to access verified consistent talent.",
+    epistemic: {
+      facts: [
+        "Lumen Labs tracks timestamped problem-solving sprints, focus hours, and syllabus completion velocity.",
+        "Zero competitors offer verified skill proof to employers from self-study data."
+      ],
+      inferences: [
+        "Tech recruiters at Indian startups value proof of gritty, consistent self-learning over static university GPA.",
+        "Could unlock enterprise hiring monetization with ₹50K+ placement fees."
+      ],
+      assumptions: [
+        "Recruiters will trust student app logs without third-party proctoring.",
+        "Students will consent to sharing study metadata with potential employers."
+      ]
+    },
+    evidence: [
+      {
+        claim: "High recruiter demand for objective evidence of student discipline",
+        source: "Informal Advisor discussions & HR tech landscape scan",
+        type: "inference",
+        verified: false
+      }
+    ],
+    healthImpacts: [
+      { metricKey: "market", label: "Market Defensibility", expectedDelta: +15, reason: "Establishes a 2-sided talent marketplace moat." },
+      { metricKey: "product", label: "Execution Risk", expectedDelta: -10, reason: "Severe distraction from core study-planning product roadmap." }
+    ],
+    risks: [
+      "Distracts 3-person team from solving current pre-seed D30 retention.",
+      "Requires enterprise B2B sales cycles in addition to consumer student loops."
+    ],
+    effort: "High",
+    timeToImpact: "6-9 months",
+    uncertainties: [
+      "Will recruiters pay for study consistency data without standardized coding evaluations?",
+      "DPDP Act compliance for sharing student behavioral data."
+    ],
+    validationExperiments: [
+      {
+        id: "exp-6",
+        hypothesis: "At least 3 tech startup hiring managers agree to review sample anonymized study transcripts.",
+        test: "Outreach to 10 alumni founders with sample student discipline scorecards.",
+        metric: "3 founder interviews scheduled",
+        effort: "1-2 days",
+        status: "pending"
+      }
+    ],
+    recommendedAction: {
+      label: "Park in Backlog for Post-Seed Stage",
+      description: "Fascinating long-term defensibility, but premature for pre-seed execution.",
+      suggestedDecision: "park"
+    },
+    linkedCompetitors: ["Generic LLM chat"],
+    linkedSimulatorScenario: "feature",
+    decisionRecord: {
+      decision: "park",
+      decidedAt: "Jul 21, 2026",
+      reasoning: "Too early. Focus must remain 100% on student retention and pre-seed closing before entering B2B recruiting.",
+      actionSummary: "Logged into roadmap phase: Later · Q4 under 'Employer skill transcript pilot'.",
+      memoryEventId: "M-110"
+    }
   },
 ];
 
@@ -718,3 +1138,371 @@ export const chatSeed = [
     text: "Morning, Meera. Overnight I re-ran the retention diagnosis and verified StudyOS's planner launch. Two things need a decision today: the onboarding rollback (86% confidence) and whether we open the pre-seed conversation this month.",
   },
 ];
+
+export function getProfileTailoredOpportunities(
+  profile: Record<string, string>,
+  baseOppList: Opportunity[] = opportunities
+): Opportunity[] {
+  const companyName = profile["company_name"] || profile["companyName"];
+  const targetCustomer = profile["target_customer"] || profile["target_customers"];
+  const product = profile["product"] || profile["one_line_pitch"] || profile["description"];
+  const industry = profile["industry"];
+  const competitorsStr = profile["competitors"];
+
+  // If no custom profile set or matches default PrepTrack demo, return base opportunities
+  if (!companyName && !product && !targetCustomer) {
+    return baseOppList;
+  }
+
+  const name = companyName || "Your Startup";
+  const icp = targetCustomer || "target users";
+  const prod = product || "your core offering";
+  const ind = industry || "your market segment";
+
+  const compList = typeof competitorsStr === "string" 
+    ? competitorsStr.split(",").map(c => c.trim()).filter(Boolean)
+    : Array.isArray(competitorsStr) ? competitorsStr : [];
+
+  const comp1 = compList[0] || "Legacy competitors";
+  const comp2 = compList[1] || "Market incumbents";
+
+  return [
+    {
+      id: "O-51",
+      title: `Automated AI Workflow Integration for ${icp}`,
+      type: "Feature gap",
+      status: "detected",
+      confidence: 88,
+      size: "High",
+      detail: `Competitors like ${comp1} rely on manual configuration. Introducing 1-click automated setup tailored for ${icp} reduces time-to-value from 3 days to under 5 minutes.`,
+      signal: `Analyzed ${comp1} reviews & 4 user interview notes`,
+      detectedAt: "Jul 28, 2026",
+      whyFound: `Research Agent flagged high churn in onboarding for ${comp1} users looking for seamless ${prod} automation.`,
+      startupFit: `Directly enhances ${name}'s core value proposition for ${icp} during early onboarding.`,
+      epistemic: {
+        facts: [
+          `78% of interviewed ${icp} cite setup friction as their primary complaint with existing tools.`,
+          `${comp1} currently requires manual API key provisioning and custom webhooks.`,
+          `${name}'s current architecture supports automated token exchange.`
+        ],
+        inferences: [
+          `Adding pre-built workflow templates could increase week-1 user retention by 25-35%.`,
+          `Positioning as 'Zero-Setup ${prod}' unlocks organic word-of-mouth referral loops.`
+        ],
+        assumptions: [
+          `${icp} will grant OAuth read permissions to automatically pull initial data.`,
+          `Engineering effort is under 3 developer weeks.`
+        ]
+      },
+      evidence: [
+        {
+          claim: `Over 65% of ${icp} abandon multi-step onboarding processes`,
+          source: `Gartner ${ind} Benchmarks 2025`,
+          type: "fact",
+          verified: true
+        },
+        {
+          claim: `${name}'s time-to-value drop could boost conversion by 2.4x`,
+          source: "Research Agent Competitive Friction Matrix",
+          type: "inference",
+          verified: false
+        }
+      ],
+      healthImpacts: [
+        { metricKey: "product", label: "Product Health", expectedDelta: 14, reason: "Significantly boosts product activation rate." },
+        { metricKey: "growth", label: "Growth Score", expectedDelta: 8, reason: "Higher conversion from signups to active users." }
+      ],
+      risks: [
+        "Edge cases in third-party API rate limits during auto-sync.",
+        "Higher initial cloud infrastructure overhead during batch sync."
+      ],
+      effort: "Medium",
+      timeToImpact: "3-5 weeks",
+      uncertainties: [
+        `Will legacy enterprise customers in ${ind} allow automated cloud sync without manual security review?`,
+        "What is the error rate on zero-shot auto configuration?"
+      ],
+      validationExperiments: [
+        {
+          id: "exp-1",
+          hypothesis: `Promoting '1-Click Auto-Setup' on ${name}'s landing page boosts demo requests by 20%.`,
+          test: `A/B test landing page copy targeting ${icp}.`,
+          metric: "Demo conversion rate > 12%",
+          effort: "1-2 days",
+          status: "pending"
+        }
+      ],
+      recommendedAction: {
+        label: `Build MVP Auto-Setup Wizard for ${icp}`,
+        description: "Highest leveraged wedge to differentiate from legacy competitors early on.",
+        suggestedDecision: "pursue"
+      },
+      linkedCompetitors: [comp1, comp2],
+      linkedResearchQuery: `${ind} automated onboarding friction`,
+      linkedSimulatorScenario: "feature"
+    },
+    {
+      id: "O-49",
+      title: `Group & Team Subscription Tier for ${icp}`,
+      type: "Pricing gap",
+      status: "detected",
+      confidence: 83,
+      size: "Very high",
+      detail: `Uncaptured expansion revenue: ${icp} frequently operate in teams of 3-10, yet ${comp1} and competitors only offer individual licenses.`,
+      signal: `3 support inquiries · 0/${Math.max(1, compList.length)} competitors offer team seats`,
+      detectedAt: "Jul 25, 2026",
+      whyFound: `Inbound feature requests & support logs showed users attempting to share single logins across team members.`,
+      startupFit: `Leverages ${name}'s collaborative workspace model to drive multi-seat expansion.`,
+      epistemic: {
+        facts: [
+          `Users in ${icp} segment share account credentials in 42% of observed teams.`,
+          `Average seat willingness-to-pay for team controls is 2.2x individual subscription price.`,
+          `Neither ${comp1} nor ${comp2} provides role-based access control (RBAC).`
+        ],
+        inferences: [
+          `Introducing a 5-seat Team Bundle increases average contract value (ACV) from single-seat to team tier by 3.5x.`,
+          `Decreases password sharing while increasing user telemetry granularity.`
+        ],
+        assumptions: [
+          `Team lead will pay via corporate credit card without requiring procurement purchase orders.`
+        ]
+      },
+      evidence: [
+        {
+          claim: "Team accounts experience 45% lower annual churn than solo accounts",
+          source: `SaaS Benchmark Report on ${ind}`,
+          type: "fact",
+          verified: true
+        }
+      ],
+      healthImpacts: [
+        { metricKey: "financial", label: "Financial Health", expectedDelta: 18, reason: "Substantially increases ACV and net revenue retention (NRR)." },
+        { metricKey: "growth", label: "Growth Score", expectedDelta: 10, reason: "Multiplies active seat count per signup." }
+      ],
+      risks: [
+        "Complexity in permission roles (Admin, Editor, Viewer).",
+        "Potential pushback if individual tiers feel artificially restricted."
+      ],
+      effort: "Medium",
+      timeToImpact: "4-6 weeks",
+      uncertainties: [
+        `What is the ideal per-seat discount threshold for 5+ seat packages in ${ind}?`
+      ],
+      validationExperiments: [
+        {
+          id: "exp-2",
+          hypothesis: `Adding a 'Team Plan' pricing toggle results in >15% of new signups choosing the team waitlist.`,
+          test: "Add Team tier mockup to pricing page with 'Request Early Access'.",
+          metric: "20+ team access requests in 7 days",
+          effort: "1-2 days",
+          status: "pending"
+        }
+      ],
+      recommendedAction: {
+        label: "Test Team Plan Demand on Pricing Page",
+        description: "High revenue upside with minimal initial code changes.",
+        suggestedDecision: "validate"
+      },
+      linkedCompetitors: [comp1, comp2],
+      linkedResearchQuery: `Team seat pricing models in ${ind}`,
+      linkedSimulatorScenario: "price"
+    },
+    {
+      id: "O-47",
+      title: `B2B Enterprise Integration & API Access for ${ind}`,
+      type: "Market gap",
+      status: "detected",
+      confidence: 79,
+      size: "High",
+      detail: `Mid-market enterprises in ${ind} require structured export & REST API access to embed ${name}'s intelligence into their existing stack.`,
+      signal: "Enterprise inquiry & competitor changelog scan",
+      detectedAt: "Jul 20, 2026",
+      whyFound: "Critic Agent noted that enterprise deals stall without SOC2 & webhook API export compliance.",
+      startupFit: `Positions ${name} to move up-market into higher contract size deals.`,
+      epistemic: {
+        facts: [
+          `Mid-market buyers in ${ind} have average deal sizes of $15,000 - $45,000/yr.`,
+          "Security compliance and API webhooks are non-negotiable for enterprise procurement."
+        ],
+        inferences: [
+          "Building API export endpoints opens channel partner integrations.",
+          "Shortens enterprise deal sales cycle by 40%."
+        ],
+        assumptions: [
+          "Current architecture can scale to high-frequency REST API calls without dedicated microservice refactoring."
+        ]
+      },
+      evidence: [
+        {
+          claim: `70% of enterprise buyers require API interoperability before signing contracts in ${ind}`,
+          source: "State of Enterprise Tech Integration 2025",
+          type: "fact",
+          verified: true
+        }
+      ],
+      healthImpacts: [
+        { metricKey: "market", label: "Market Position", expectedDelta: 15, reason: "Establishes enterprise credibility against legacy players." },
+        { metricKey: "financial", label: "Financial Health", expectedDelta: 20, reason: "Unlocks 5-figure enterprise ACVs." }
+      ],
+      risks: [
+        "Feature bloat driven by single custom enterprise requests.",
+        "Longer sales cycles diverting focus from core self-serve growth."
+      ],
+      effort: "High",
+      timeToImpact: "8-12 weeks",
+      uncertainties: [
+        `Should ${name} build a public API or start with Zapier/Make connectors first?`
+      ],
+      validationExperiments: [
+        {
+          id: "exp-3",
+          hypothesis: "Offering a Zapier integration beta captures 10 enterprise lead inquiries.",
+          test: "Publish Zapier Integration landing page and collect interested lead profiles.",
+          metric: "10 qualified enterprise leads",
+          effort: "1-2 days",
+          status: "pending"
+        }
+      ],
+      recommendedAction: {
+        label: "Launch Zapier Integration Waitlist",
+        description: "Low effort way to validate enterprise API demand before writing custom endpoints.",
+        suggestedDecision: "validate"
+      },
+      linkedCompetitors: [comp1],
+      linkedResearchQuery: `Enterprise API demand in ${ind}`,
+      linkedSimulatorScenario: "tier"
+    },
+    {
+      id: "O-44",
+      title: `Community & Peer Network for ${icp}`,
+      type: "Blue ocean",
+      status: "detected",
+      confidence: 74,
+      size: "Medium",
+      detail: `Create an exclusive co-learning and benchmarking network where ${icp} share insights, templates, and best practices directly within ${name}.`,
+      signal: "Zero direct competitors have community features",
+      detectedAt: "Jul 15, 2026",
+      whyFound: "User sentiment analysis revealed high desire for peer benchmarking and peer-driven accountability.",
+      startupFit: `Creates a powerful network effect and defensible moat around ${name}.`,
+      epistemic: {
+        facts: [
+          `${icp} currently seek peer feedback on Discord, Reddit, and LinkedIn groups.`,
+          "In-product community features increase 30-day user retention by up to 40%."
+        ],
+        inferences: [
+          "Peer interaction transforms single-player software into a collaborative platform.",
+          "User-generated templates lower acquisition cost."
+        ],
+        assumptions: [
+          "Users will contribute high quality templates without immediate financial incentives."
+        ]
+      },
+      evidence: [
+        {
+          claim: "Products with community loops have 3x higher organic user retention",
+          source: "Product-Led Growth Benchmark Study 2025",
+          type: "fact",
+          verified: true
+        }
+      ],
+      healthImpacts: [
+        { metricKey: "growth", label: "Growth Score", expectedDelta: 12, reason: "Organic viral growth loop via community sharing." },
+        { metricKey: "product", label: "Product Health", expectedDelta: 6, reason: "User-generated content enriches ecosystem value." }
+      ],
+      risks: [
+        "Ghost-town risk if initial critical mass is not reached.",
+        "Community moderation overhead."
+      ],
+      effort: "Medium",
+      timeToImpact: "6-8 weeks",
+      uncertainties: [
+        "How to incentivize top 5% creators to publish public templates?"
+      ],
+      validationExperiments: [
+        {
+          id: "exp-4",
+          hypothesis: "An invite-only Slack/Discord group for active users reaches 100 members with >30% weekly engagement.",
+          test: "Invite top 50 active users to a private Founder/User Circle.",
+          metric: "30% WAU in community channel",
+          effort: "1-2 days",
+          status: "pending"
+        }
+      ],
+      recommendedAction: {
+        label: "Launch Private User Community",
+        description: "Start off-platform on Discord/Slack before building custom in-app social UI.",
+        suggestedDecision: "validate"
+      },
+      linkedCompetitors: [comp2],
+      linkedResearchQuery: `Community network loops for ${icp}`,
+      linkedSimulatorScenario: "community"
+    },
+    {
+      id: "O-40",
+      title: `Real-Time Intelligence & Predictive Analytics Dashboard for ${icp}`,
+      type: "Positioning gap",
+      status: "detected",
+      confidence: 85,
+      size: "Very high",
+      detail: `Shift positioning from a simple reactive tool to an essential 'Predictive Operating System' that alerts ${icp} to risks before they happen.`,
+      signal: "Executive user feedback & competitor positioning gap scan",
+      detectedAt: "Jul 10, 2026",
+      whyFound: `Forecasting Agent noted that existing tools in ${ind} only report historical data rather than proactive forecasts.`,
+      startupFit: `Directly unlocks high-tier subscription pricing for ${name}.`,
+      epistemic: {
+        facts: [
+          `90% of tools in ${ind} are retrospective reporting dashboards.`,
+          `Decision makers in ${icp} pay a 3x premium for predictive anomaly alerts.`
+        ],
+        inferences: [
+          "Proactive notifications prevent churn and increase daily active engagement.",
+          "Establishes a category-defining narrative against legacy competitors."
+        ],
+        assumptions: [
+          "Underlying ML models have sufficient historical baseline data to avoid false alarms."
+        ]
+      },
+      evidence: [
+        {
+          claim: "Predictive alerts increase executive DAU/MAU ratio from 18% to 54%",
+          source: "B2B Analytics Benchmark Report",
+          type: "fact",
+          verified: true
+        }
+      ],
+      healthImpacts: [
+        { metricKey: "market", label: "Market Position", expectedDelta: 18, reason: "Redefines market positioning from utility to strategic intelligence platform." },
+        { metricKey: "financial", label: "Financial Health", expectedDelta: 14, reason: "Justifies enterprise package price increase." }
+      ],
+      risks: [
+        "False positive alerts causing notification fatigue.",
+        "Increased data processing overhead for real-time streaming."
+      ],
+      effort: "High",
+      timeToImpact: "6-10 weeks",
+      uncertainties: [
+        "What precision threshold is required before users trust automated predictions?"
+      ],
+      validationExperiments: [
+        {
+          id: "exp-5",
+          hypothesis: "Sending a weekly email digest with 3 predictive insights generates >40% open rate and reply interest.",
+          test: "Manually curate 3 predictive insights for 20 active users.",
+          metric: "Open rate > 40%, 5+ replies requesting live alerts",
+          effort: "1-2 days",
+          status: "pending"
+        }
+      ],
+      recommendedAction: {
+        label: "Test Predictive Email Digest MVP",
+        description: "Validate demand for proactive alerts using email digests before building real-time dashboard UI.",
+        suggestedDecision: "pursue"
+      },
+      linkedCompetitors: [comp1, comp2],
+      linkedResearchQuery: `Predictive analytics demand in ${ind}`,
+      linkedSimulatorScenario: "predictive"
+    }
+  ];
+}
+
+

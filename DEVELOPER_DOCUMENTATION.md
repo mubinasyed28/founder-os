@@ -21,6 +21,7 @@ Cofoundr OS is a multi-agent decision engine with persistent company memory desi
    - [Feature 3: AI Co-Founder Chatbot](#feature-3-ai-co-founder-chatbot)
    - [Feature 4: Startup Health Dashboard V1](#feature-4-startup-health-dashboard-v1)
    - [Feature 5: Competitor Research V1](#feature-5-competitor-research-v1)
+   - [Feature 6: Opportunities & Decision Intelligence Engine (See OPPORTUNITY_FEATURE_DOCUMENTATION.md)](./OPPORTUNITY_FEATURE_DOCUMENTATION.md)
 4. [Database Schema Specs](#4-database-schema-specs)
 5. [Developer Setup & Configuration](#5-developer-setup--configuration)
 6. [Extension Guide & Implementation Decisions](#6-extension-guide--implementation-decisions)

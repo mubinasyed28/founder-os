@@ -2,7 +2,11 @@
  * API Client for FastAPI Backend (http://localhost:8000/api)
  */
 
-const API_BASE_URL = "/api";
+// Base API URL: Defaults to "/api" (local Vite proxy), or uses VITE_API_URL if connecting to Render/remote deployment
+const rawApiUrl = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL;
+const API_BASE_URL = rawApiUrl
+  ? (rawApiUrl.endsWith("/api") ? rawApiUrl.replace(/\/$/, "") : `${rawApiUrl.replace(/\/$/, "")}/api`)
+  : "/api";
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -292,5 +296,45 @@ export async function getCompetitorDetailApi(id: string): Promise<any> {
   return apiRequest(`/competitors/${id}`);
 }
 
+// ── Opportunities & Decision Intelligence Endpoints ───────────────────
 
+export async function getOpportunitiesApi(): Promise<{
+  opportunities?: any[];
+  decisions: Record<string, any>;
+  experiments: Record<string, string>;
+  companyName?: string;
+  targetCustomer?: string;
+}> {
+  return apiRequest("/opportunities");
+}
+
+export async function regenerateOpportunitiesApi(): Promise<{
+  success: boolean;
+  opportunities: any[];
+  companyName?: string;
+}> {
+  return apiRequest("/opportunities/generate", {
+    method: "POST",
+  });
+}
+
+export async function decideOpportunityApi(
+  opportunityId: string,
+  data: { decision: string; reasoning: string; action_summary?: string }
+): Promise<any> {
+  return apiRequest(`/opportunities/${opportunityId}/decide`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateValidationApi(
+  opportunityId: string,
+  data: { experiment_id: string; status: string }
+): Promise<any> {
+  return apiRequest(`/opportunities/${opportunityId}/validate`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
 

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memoryTimeline } from "@/lib/company-data";
+import { useOs } from "@/lib/os-store";
 import { PageHeader, Panel, Tag } from "@/components/os/primitives";
 
 export const Route = createFileRoute("/app/timeline")({
@@ -7,6 +7,8 @@ export const Route = createFileRoute("/app/timeline")({
 });
 
 function Page() {
+  const { timeline } = useOs();
+
   return (
     <>
       <PageHeader
@@ -16,11 +18,11 @@ function Page() {
       />
       <Panel>
         <ol>
-          {memoryTimeline.map((m, i) => (
+          {timeline.map((m, i) => (
             <li key={m.id} className="relative flex gap-4 pb-7 last:pb-0">
               <div className="flex flex-col items-center">
                 <span className="mt-1 size-2.5 shrink-0 rounded-full bg-primary" />
-                {i < memoryTimeline.length - 1 ? <span className="mt-1 w-px flex-1 bg-border" /> : null}
+                {i < timeline.length - 1 ? <span className="mt-1 w-px flex-1 bg-border" /> : null}
               </div>
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
