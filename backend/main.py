@@ -37,6 +37,14 @@ async def on_startup():
     print("[main] Starting FastAPI server & initializing MongoDB...")
     await init_db()
 
+@app.api_route("/", methods=["GET", "HEAD"])
+async def root_endpoint():
+    return {"status": "ok", "service": "Cofoundr OS API", "version": "1.0.0"}
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health_status_endpoint():
+    return {"status": "ok", "service": "Cofoundr OS API", "version": "1.0.0"}
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "service": "Cofoundr OS FastAPI Backend"}
@@ -53,7 +61,9 @@ app.include_router(research.router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    host = os.getenv("HOST", "0.0.0.0")
+    uvicorn.run("backend.main:app", host=host, port=port, reload=False)
 
 # Trigger reload
 
