@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FileText, Loader2, Trash2, UploadCloud, Search,
   Calendar, Edit3, Check, X, ArrowUpCircle, BookOpen,
-  Database, Layers, ChevronRight
+  Database, Layers, ChevronRight, Camera, Upload, Sparkles, Link2
 } from "lucide-react";
 import {
   listDocumentsApi,
@@ -18,6 +18,7 @@ import {
   reclassifyDocumentApi,
   replaceDocumentApi,
   getDocumentStatsApi,
+  uploadAvatarApi,
 } from "@/lib/api-client";
 
 export const Route = createFileRoute("/app/profile")({
@@ -56,14 +57,45 @@ function getMonthYear(d: string | Date) {
   return new Date(d).toLocaleString("default", { month: "long", year: "numeric" });
 }
 
+const AVATAR_PRESETS = [
+  { id: "1", label: "Executive", url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=256&h=256&fit=crop&crop=face" },
+  { id: "2", label: "Builder", url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=256&h=256&fit=crop&crop=face" },
+  { id: "3", label: "Innovator", url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=256&h=256&fit=crop&crop=face" },
+  { id: "4", label: "Visionary", url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=256&h=256&fit=crop&crop=face" },
+];
+
 /* ─── Page ───────────────────────────────────────────── */
 function Page() {
   const { user } = useAuth();
-  const { profile, pushActivity, refreshHealth } = useOs();
+  const { profile, updateProfile, pushActivity, refreshHealth } = useOs();
 
-  const displayName = user?.username
-    ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
-    : "Founder";
+  const rawFounders = profile["founders"];
+  const firstFounder = Array.isArray(rawFounders)
+    ? rawFounders[0]
+    : typeof rawFounders === "string"
+      ? rawFounders.split(",")[0]?.trim()
+      : "";
+
+  const founderName =
+    profile["founder_name"] ||
+    firstFounder ||
+    (user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : "") ||
+    "Maya Kapoor";
+
+  const founderInitials = (() => {
+    if (!founderName || !founderName.trim()) return "MK";
+    const parts = founderName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
+    return parts[0].slice(0, 1).toUpperCase();
+  })();
+
+  const avatarUrl =
+    profile["avatar_url"] ||
+    profile["founder_image"] ||
+    profile["profile_image"] ||
+    (user as any)?.avatar_url ||
+    "";
 
   const companyName = profile["company_name"] || company.name;
 
@@ -80,6 +112,7 @@ function Page() {
       : "";
 
   const profileRows = [
+    ["Founder Name", founderName],
     ["Role", "Co-founder & CEO"],
     ["Location", profile["location"] || "Remote"],
     ["Industry", profile["industry"] || "Technology"],
@@ -88,6 +121,114 @@ function Page() {
     ["Quarterly Focus", shortTermGoals || "Define short-term goals in onboarding"],
     ["Key Challenges", challenges || "Identify startup challenges in onboarding"],
   ];
+
+  /* ── Avatar Management State ── */
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(founderName);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [customUrlInput, setCustomUrlInput] = useState("");
+
+  async function handleAvatarFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError(null);
+    setUploadingAvatar(true);
+
+    try {
+      // First try backend upload endpoint
+      try {
+        const res = await uploadAvatarApi(file);
+        if (res && res.avatar_url) {
+          await updateProfile({ avatar_url: res.avatar_url });
+          pushActivity("Memory Agent", "uploaded and synced founder profile picture");
+          setUploadingAvatar(false);
+          return;
+        }
+      } catch (backendErr) {
+        console.warn("Backend avatar endpoint failed, falling back to client canvas:", backendErr);
+      }
+
+      // Fallback to client-side canvas compression for local / offline resilience
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const img = new window.Image();
+          img.onload = async () => {
+            const canvas = document.createElement("canvas");
+            const MAX_DIM = 400;
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+              if (width > MAX_DIM) {
+                height = Math.round((height * MAX_DIM) / width);
+                width = MAX_DIM;
+              }
+            } else {
+              if (height > MAX_DIM) {
+                width = Math.round((width * MAX_DIM) / height);
+                height = MAX_DIM;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+              await updateProfile({ avatar_url: dataUrl });
+              pushActivity("Memory Agent", "updated founder profile avatar");
+            }
+            setUploadingAvatar(false);
+          };
+          img.onerror = () => {
+            setAvatarError("Could not process image file.");
+            setUploadingAvatar(false);
+          };
+          img.src = event.target?.result as string;
+        } catch {
+          setAvatarError("Failed to process image.");
+          setUploadingAvatar(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      setAvatarError(err.message || "Failed to upload avatar");
+      setUploadingAvatar(false);
+    } finally {
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    setAvatarError(null);
+    await updateProfile({ avatar_url: "" });
+    pushActivity("Memory Agent", "removed founder avatar, restored initials fallback");
+  }
+
+  async function handleSaveCustomUrl() {
+    if (!customUrlInput.trim()) return;
+    setAvatarError(null);
+    await updateProfile({ avatar_url: customUrlInput.trim() });
+    pushActivity("Memory Agent", "set founder profile image from URL");
+    setCustomUrlInput("");
+    setShowUrlInput(false);
+  }
+
+  async function handleSelectPreset(url: string) {
+    setAvatarError(null);
+    await updateProfile({ avatar_url: url });
+    pushActivity("Memory Agent", "selected founder avatar preset");
+  }
+
+  async function handleSaveFounderName() {
+    if (!nameInput.trim()) return;
+    await updateProfile({ founder_name: nameInput.trim() });
+    pushActivity("Memory Agent", `updated founder name to "${nameInput.trim()}"`);
+    setIsEditingName(false);
+  }
 
   /* ── Document Library State ── */
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -206,11 +347,211 @@ function Page() {
 
   return (
     <>
-      <PageHeader
-        eyebrow="Profile"
-        title={displayName}
-        subtitle={`Co-founder & CEO · ${companyName}`}
-      />
+      {/* ── Founder Identity & Avatar Card ── */}
+      <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-surface-1 via-surface-2 to-surface-1 p-6 glass shadow-xl">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            {/* Avatar preview container */}
+            <div className="relative group shrink-0">
+              <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-primary/30 bg-surface-3 shadow-lg transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-primary/20">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={founderName}
+                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="grid size-full place-items-center bg-primary/15 text-3xl font-bold tracking-tight text-primary">
+                    {founderInitials}
+                  </div>
+                )}
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-xs">
+                    <Loader2 className="size-6 animate-spin text-primary" />
+                  </div>
+                )}
+              </div>
+
+              {/* Quick overlay change button */}
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-1.5 -right-1.5 flex size-8 items-center justify-center rounded-xl border border-border bg-surface-2 text-foreground shadow-md transition-transform hover:scale-110 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground cursor-pointer"
+                title="Change photo"
+              >
+                <Camera className="size-4" />
+              </button>
+            </div>
+
+            {/* Founder details */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                  Founder Profile
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                  {avatarUrl ? "Photo Active in Topbar" : "Initials Active in Topbar"}
+                </span>
+              </div>
+
+              {isEditingName ? (
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    placeholder="Enter founder name"
+                    className="rounded-lg border border-primary/40 bg-surface-3 px-3 py-1 text-lg font-bold text-foreground outline-none focus:ring-1 focus:ring-primary"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveFounderName();
+                      if (e.key === "Escape") setIsEditingName(false);
+                    }}
+                  />
+                  <button
+                    onClick={handleSaveFounderName}
+                    className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                    title="Save name"
+                  >
+                    <Check className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsEditingName(false)}
+                    className="flex size-8 items-center justify-center rounded-lg border border-border bg-surface-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    title="Cancel"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1 flex items-center gap-2.5">
+                  <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                    {founderName}
+                  </h1>
+                  <button
+                    onClick={() => {
+                      setNameInput(founderName);
+                      setIsEditingName(true);
+                    }}
+                    className="flex size-7 items-center justify-center rounded-lg border border-border bg-surface-2 text-muted-foreground hover:border-primary/40 hover:text-foreground cursor-pointer"
+                    title="Edit founder name"
+                  >
+                    <Edit3 className="size-3.5" />
+                  </button>
+                </div>
+              )}
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Co-founder & CEO · <span className="text-foreground font-medium">{companyName}</span>
+                {user?.email ? ` · ${user.email}` : ""}
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="file"
+              ref={avatarInputRef}
+              onChange={handleAvatarFileSelect}
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+            />
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-primary/20 cursor-pointer"
+            >
+              {uploadingAvatar ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Upload className="size-3.5" />
+              )}
+              {avatarUrl ? "Change Photo" : "Upload Photo"}
+            </button>
+
+            {avatarUrl ? (
+              <button
+                onClick={handleRemoveAvatar}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20 cursor-pointer"
+                title="Remove photo and revert to initials"
+              >
+                <Trash2 className="size-3.5" />
+                Remove
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowUrlInput((v) => !v)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground cursor-pointer"
+              >
+                <Link2 className="size-3.5" />
+                Image URL
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Error message if any */}
+        {avatarError && (
+          <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {avatarError}
+          </div>
+        )}
+
+        {/* Image URL input drawer / toggle */}
+        {showUrlInput && (
+          <div className="mt-4 flex flex-col sm:flex-row items-center gap-2 pt-4 border-t border-border/60">
+            <input
+              type="url"
+              placeholder="Paste direct image link (e.g. https://images.unsplash.com/...)"
+              value={customUrlInput}
+              onChange={(e) => setCustomUrlInput(e.target.value)}
+              className="w-full sm:flex-1 rounded-xl border border-border bg-surface-3 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+            />
+            <div className="flex w-full sm:w-auto items-center gap-2">
+              <button
+                onClick={handleSaveCustomUrl}
+                disabled={!customUrlInput.trim()}
+                className="flex-1 sm:flex-initial rounded-xl bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50 cursor-pointer hover:bg-primary/90"
+              >
+                Apply URL
+              </button>
+              <button
+                onClick={() => setShowUrlInput(false)}
+                className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick avatar presets */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 pt-4 border-t border-border/50 text-[11px] text-muted-foreground">
+          <span className="font-medium text-muted-foreground flex items-center gap-1">
+            <Sparkles className="size-3 text-primary" /> Curated presets:
+          </span>
+          {AVATAR_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => handleSelectPreset(p.url)}
+              className="group flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-medium transition-all hover:border-primary/40 hover:bg-surface-3 cursor-pointer"
+            >
+              <img src={p.url} alt={p.label} className="size-4 rounded-full object-cover" />
+              <span>{p.label}</span>
+            </button>
+          ))}
+          {avatarUrl && (
+            <button
+              onClick={handleRemoveAvatar}
+              className="ml-auto text-[11px] text-primary hover:underline cursor-pointer"
+            >
+              Reset to initials ({founderInitials})
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* ── Top cards ── */}
       <div className="grid gap-4 lg:grid-cols-2 mb-8">

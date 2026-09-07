@@ -1,4 +1,4 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
   BarChart3,
@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   ListChecks,
+  LogOut,
   type LucideIcon,
   Map,
   MessagesSquare,
@@ -31,10 +32,18 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, useMemo, type FormEvent } from "react";
 import { company } from "@/lib/company-data";
+import { useAuth } from "@/lib/auth-context";
 import { useOs } from "@/lib/os-store";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type NavItem = { to: string; label: string; icon: LucideIcon };
 
@@ -100,7 +109,48 @@ const ALL_ITEMS = NAV.flatMap((g) => g.items);
 
 export function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { paletteOpen, setPaletteOpen, assistantOpen, setAssistantOpen, activity, overall } = useOs();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { paletteOpen, setPaletteOpen, assistantOpen, setAssistantOpen, activity, overall, profile } = useOs();
+
+  const rawFounders = profile["founders"];
+  const firstFounder = Array.isArray(rawFounders)
+    ? rawFounders[0]
+    : typeof rawFounders === "string"
+      ? rawFounders.split(",")[0]?.trim()
+      : "";
+
+  const founderName =
+    profile["founder_name"] ||
+    firstFounder ||
+    (user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : "") ||
+    "Maya Kapoor";
+
+  const founderEmail = user?.email || "";
+
+  const avatarUrl =
+    profile["avatar_url"] ||
+    profile["founder_image"] ||
+    profile["profile_image"] ||
+    (user as any)?.avatar_url ||
+    "";
+
+  const founderInitials = useMemo(() => {
+    if (!founderName || !founderName.trim()) return "MK";
+    const parts = founderName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    if (parts[0].length >= 2) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return parts[0].slice(0, 1).toUpperCase();
+  }, [founderName]);
+
+  const handleLogout = () => {
+    logout();
+    navigate({ to: "/auth" });
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -183,9 +233,88 @@ export function AppShell() {
               <Bell className="size-4" />
               <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
             </button>
-            <div className="grid size-8 place-items-center rounded-lg bg-primary/15 text-[11px] font-semibold text-primary">
-              MK
-            </div>
+
+            {/* Dynamic Founder Avatar / Initials & Logout Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="group relative flex size-8 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-2 transition-all hover:border-primary/50 hover:shadow-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                  title={`${founderName} (${avatarUrl ? "Photo active" : "Initials"})`}
+                  aria-label="Founder profile & account menu"
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={founderName}
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="grid size-full place-items-center bg-primary/15 text-[11px] font-semibold text-primary transition-colors group-hover:bg-primary/25">
+                      {founderInitials}
+                    </div>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 p-1.5 glass border-border/80 shadow-2xl backdrop-blur-xl">
+                <div className="flex items-center gap-2.5 px-2.5 py-2 border-b border-border/60 mb-1">
+                  <div className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/15 text-xs font-bold text-primary border border-primary/25 shadow-inner">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={founderName} className="size-full object-cover" />
+                    ) : (
+                      founderInitials
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      {founderName}
+                      <span className="inline-block size-1.5 rounded-full bg-primary" title="Active Founder" />
+                    </p>
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {founderEmail || (profile["company_name"] ? `CEO · ${profile["company_name"]}` : "Co-founder & CEO")}
+                    </p>
+                  </div>
+                </div>
+
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/app/profile"
+                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-lg cursor-pointer hover:bg-surface-2 transition-colors"
+                  >
+                    <User className="size-3.5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <div className="font-medium text-foreground">Founder Profile</div>
+                      <div className="text-[10px] text-muted-foreground">Change photo & identity</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/app/settings"
+                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-lg cursor-pointer hover:bg-surface-2 transition-colors"
+                  >
+                    <Settings className="size-3.5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <div className="font-medium text-foreground">Workspace Settings</div>
+                      <div className="text-[10px] text-muted-foreground">Preferences & agents</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1 bg-border/60" />
+
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-lg cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 transition-colors"
+                >
+                  <LogOut className="size-3.5" />
+                  <div className="flex-1">
+                    <div className="font-semibold">Log Out</div>
+                    <div className="text-[10px] text-destructive/80">End session & clear tokens</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 

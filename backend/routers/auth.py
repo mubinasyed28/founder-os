@@ -42,6 +42,7 @@ async def signup(user_in: UserCreate):
         id=user_id,
         email=new_user["email"],
         username=new_user["username"],
+        avatar_url=new_user.get("avatar_url"),
         created_at=new_user["created_at"]
     )
 
@@ -69,6 +70,7 @@ async def login(credentials: UserLogin):
         id=user_id,
         email=user["email"],
         username=user["username"],
+        avatar_url=user.get("avatar_url"),
         created_at=user.get("created_at", datetime.utcnow())
     )
 

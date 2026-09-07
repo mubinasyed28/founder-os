@@ -11,6 +11,7 @@ class Settings:
     MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")  # Map to Mistral API key for compatibility
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+    NEWSDATA_API_KEY: str = os.getenv("NEWSDATA_API_KEY", "")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "cofoundr_super_secret_jwt_key_2026")
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_MINUTES: int = 60 * 24 * 7  # 7 days

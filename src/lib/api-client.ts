@@ -3,7 +3,7 @@
  */
 
 // Base API URL: Defaults to "/api" (local Vite proxy), or uses VITE_API_URL if connecting to Render/remote deployment
-const rawApiUrl = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL;
+const rawApiUrl = typeof import.meta !== "undefined" && import.meta.env && (import.meta.env as any)["VITE_API_URL"];
 const API_BASE_URL = rawApiUrl
   ? (rawApiUrl.endsWith("/api") ? rawApiUrl.replace(/\/$/, "") : `${rawApiUrl.replace(/\/$/, "")}/api`)
   : "/api";
@@ -97,6 +97,15 @@ export async function updateProfileApi(updates: Record<string, any>): Promise<an
   return apiRequest("/onboarding/profile", {
     method: "PUT",
     body: JSON.stringify(updates),
+  });
+}
+
+export async function uploadAvatarApi(file: File): Promise<{ avatar_url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiRequest("/onboarding/avatar", {
+    method: "POST",
+    body: formData,
   });
 }
 
@@ -335,6 +344,85 @@ export async function updateValidationApi(
   return apiRequest(`/opportunities/${opportunityId}/validate`, {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+// ── Research Center & Persistent Intelligence Pipeline Endpoints ───────
+
+export async function triggerResearchApi(): Promise<{
+  success: boolean;
+  run_id: string;
+  status: string;
+  message?: string;
+}> {
+  return apiRequest("/research/run", {
+    method: "POST",
+  });
+}
+
+export async function getResearchCenterStatusApi(runId?: string): Promise<{
+  id?: string;
+  status: string;
+  started_at?: string;
+  completed_at?: string;
+  error_message?: string;
+  pipeline_log?: string[];
+  evidence_found?: number;
+  evidence_new?: number;
+  entities_found?: number;
+  events_found?: number;
+  insights_generated?: number;
+  queries_used?: any[];
+  message?: string;
+}> {
+  const query = runId ? `?run_id=${encodeURIComponent(runId)}` : "";
+  return apiRequest(`/research/status${query}`);
+}
+
+export async function getResearchInsightsApi(impactArea?: string): Promise<any[]> {
+  const query = impactArea && impactArea !== "all" ? `?impact_area=${encodeURIComponent(impactArea)}` : "";
+  return apiRequest(`/research/insights${query}`);
+}
+
+export async function getResearchEvidenceApi(
+  sourceType?: string,
+  skip: number = 0,
+  limit: number = 50
+): Promise<{ total: number; items: any[] }> {
+  const params = new URLSearchParams();
+  if (sourceType && sourceType !== "all") params.append("source_type", sourceType);
+  params.append("skip", skip.toString());
+  params.append("limit", limit.toString());
+  return apiRequest(`/research/evidence?${params.toString()}`);
+}
+
+export async function getResearchEntitiesApi(entityType?: string): Promise<any[]> {
+  const query = entityType && entityType !== "all" ? `?entity_type=${encodeURIComponent(entityType)}` : "";
+  return apiRequest(`/research/entities${query}`);
+}
+
+export async function getResearchEventsApi(eventType?: string): Promise<any[]> {
+  const query = eventType && eventType !== "all" ? `?event_type=${encodeURIComponent(eventType)}` : "";
+  return apiRequest(`/research/events${query}`);
+}
+
+export async function getResearchStatsApi(): Promise<{
+  evidence_count: number;
+  entity_count: number;
+  event_count: number;
+  insight_count: number;
+  last_run: any | null;
+}> {
+  return apiRequest("/research/stats");
+}
+
+export async function submitInsightFeedbackApi(
+  insightId: string,
+  feedback: "useful" | "not_useful" | "dismissed"
+): Promise<{ success: boolean; insight_id: string; feedback: string }> {
+  return apiRequest(`/research/insights/${insightId}/feedback`, {
+    method: "POST",
+    body: JSON.stringify({ feedback }),
   });
 }
 

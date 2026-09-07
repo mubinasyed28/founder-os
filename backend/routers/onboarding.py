@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Body
 from typing import Dict, Any, List
 from datetime import datetime
+import base64
 from backend.models import ChatRequest, ChatResponse, CompanyProfile
 from backend.auth import get_optional_current_user
 from backend.database import get_db
@@ -58,6 +59,15 @@ async def update_user_profile(
         upsert=True
     )
 
+    # Sync avatar_url to users collection if present
+    if "avatar_url" in updates and user_id != "guest_session_user":
+        from bson import ObjectId
+        if ObjectId.is_valid(user_id):
+            await db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$set": {"avatar_url": updates["avatar_url"]}}
+            )
+
     # Recalculate health report if health engine exists
     try:
         from backend.services.health_engine import calculate_health
@@ -67,6 +77,39 @@ async def update_user_profile(
 
     profile_doc.pop("updated_at", None)
     return CompanyProfile(**profile_doc)
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_optional_current_user)
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be an image.")
+    
+    file_bytes = await file.read()
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit.")
+        
+    mime_type = file.content_type
+    base64_data = base64.b64encode(file_bytes).decode("utf-8")
+    data_url = f"data:{mime_type};base64,{base64_data}"
+    
+    db = await get_db()
+    user_id = current_user["id"]
+    await db.profiles.update_one(
+        {"user_id": user_id},
+        {"$set": {"avatar_url": data_url, "updated_at": datetime.utcnow()}},
+        upsert=True
+    )
+    if user_id != "guest_session_user":
+        from bson import ObjectId
+        if ObjectId.is_valid(user_id):
+            await db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$set": {"avatar_url": data_url}}
+            )
+            
+    return {"avatar_url": data_url}
 
 
 @router.get("/history")

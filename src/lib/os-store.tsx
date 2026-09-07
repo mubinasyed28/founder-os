@@ -20,9 +20,9 @@ type OsState = {
   companyId: string | null;
   setCompanyId: (id: string) => void;
   onboarded: boolean;
-  completeOnboarding: (profile: Record<string, string>, companyId?: string) => void;
-  updateProfile: (updates: Record<string, string>) => Promise<void>;
-  profile: Record<string, string>;
+  completeOnboarding: (profile: Record<string, any>, companyId?: string) => void;
+  updateProfile: (updates: Record<string, any>) => Promise<void>;
+  profile: Record<string, any>;
   tasks: TaskItem[];
   toggleTask: (id: string) => void;
   addTask: (title: string, from: string) => void;
@@ -82,7 +82,7 @@ export function OsProvider({ children }: { children: ReactNode }) {
     }
     return true;
   });
-  const [profile, setProfile] = useState<Record<string, string>>(() => {
+  const [profile, setProfile] = useState<Record<string, any>>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("cofoundr_profile");
@@ -344,7 +344,7 @@ export function OsProvider({ children }: { children: ReactNode }) {
   );
 
   const completeOnboarding = useCallback(
-    (p: Record<string, string>, cId?: string) => {
+    (p: Record<string, any>, cId?: string) => {
       setProfile(p);
       setOnboarded(true);
       if (cId) {
@@ -376,7 +376,7 @@ export function OsProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (updates: Record<string, string>) => {
+    async (updates: Record<string, any>) => {
       setProfile((prev) => {
         const next = { ...prev, ...updates };
         if (typeof window !== "undefined") {

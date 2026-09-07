@@ -17,6 +17,7 @@ class UserOut(BaseModel):
     id: str
     email: str
     username: str
+    avatar_url: Optional[str] = None
     created_at: datetime
 
 class TokenResponse(BaseModel):
@@ -28,6 +29,8 @@ class TokenResponse(BaseModel):
 
 class CompanyProfile(BaseModel):
     company_name: str = ""
+    avatar_url: str = ""
+    founder_name: str = ""
     one_line_pitch: str = ""
     description: str = ""
     industry: str = ""
@@ -209,5 +212,93 @@ class CompetitorResearchResult(BaseModel):
     completed_at: Optional[datetime] = None
     startup_context_used: Dict[str, Any] = Field(default_factory=dict)
     error_message: Optional[str] = None
+
+# ── Research Center / Persistent Intelligence Pipeline Models ─────────
+
+class ResearchEvidence(BaseModel):
+    """Individual source/evidence record from web search or news API."""
+    id: str = ""
+    user_id: str = ""
+    url: str = ""
+    title: str = ""
+    snippet: str = ""
+    full_text: str = ""
+    source_type: str = ""  # "newsdata", "tavily", "competitor_research"
+    source_query: str = ""  # The query that produced this result
+    query_intent: str = ""  # "competitor_activity", "market_trend", "customer_signal", "regulatory", "technology"
+    domain: str = ""
+    content_hash: str = ""  # sha256(url + title) for dedup
+    retrieved_at: datetime = Field(default_factory=datetime.utcnow)
+    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # Extra fields from source API
+
+class ResearchEntity(BaseModel):
+    """Persistent entity: company, person, product, technology tracked over time."""
+    id: str = ""
+    user_id: str = ""
+    canonical_name: str = ""
+    entity_type: str = ""  # "company", "person", "product", "technology", "organization"
+    attributes: Dict[str, Any] = Field(default_factory=dict)  # flexible key-value pairs
+    first_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    mention_count: int = 1
+    linked_evidence_ids: List[str] = Field(default_factory=list)
+    relevance_score: int = 0  # 0-100, how relevant to the startup
+
+class ResearchEvent(BaseModel):
+    """Discrete event extracted from evidence: funding, launch, partnership, etc."""
+    id: str = ""
+    user_id: str = ""
+    event_type: str = ""  # "funding_round", "product_launch", "partnership", "acquisition", "regulatory", "market_shift"
+    title: str = ""
+    description: str = ""
+    event_date: Optional[str] = None  # Extracted or estimated date
+    entities_involved: List[str] = Field(default_factory=list)  # canonical_names of involved entities
+    evidence_ids: List[str] = Field(default_factory=list)
+    relevance_score: int = 0  # 0-100
+    event_signature: str = ""  # Dedup key: hash of event_type + entities + date
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ResearchInsight(BaseModel):
+    """Startup-specific interpretation of evidence — the core deliverable."""
+    id: str = ""
+    user_id: str = ""
+    what_happened: str = ""  # Headline
+    evidence_summary: str = ""  # What is the evidence?
+    why_it_matters: str = ""  # Why does this matter to THIS startup?
+    what_to_do: str = ""  # What could the founder do about it?
+    confidence: int = 0  # 0-100
+    impact_area: str = ""  # "competitive", "market", "customer", "product", "regulatory", "technology"
+    evidence_ids: List[str] = Field(default_factory=list)
+    entity_names: List[str] = Field(default_factory=list)
+    event_ids: List[str] = Field(default_factory=list)
+    source_count: int = 0
+    content_hash: str = ""  # For staleness check — hash of underlying evidence IDs
+    relevance_score: int = 0  # Composite ranking score
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ResearchRun(BaseModel):
+    """Pipeline execution record for auditability."""
+    id: str = ""
+    user_id: str = ""
+    status: str = "pending"  # "pending", "planning", "searching", "processing", "analyzing", "completed", "failed"
+    queries_used: List[Dict[str, Any]] = Field(default_factory=list)
+    evidence_found: int = 0
+    evidence_new: int = 0
+    entities_found: int = 0
+    events_found: int = 0
+    insights_generated: int = 0
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    pipeline_log: List[str] = Field(default_factory=list)
+
+class ResearchFeedback(BaseModel):
+    """Founder feedback on insight usefulness — drives relevance improvement."""
+    user_id: str = ""
+    insight_id: str = ""
+    feedback: str = ""  # "useful", "not_useful", "dismissed"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

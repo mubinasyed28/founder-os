@@ -53,6 +53,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         "id": str(user["_id"]),
         "email": user["email"],
         "username": user["username"],
+        "avatar_url": user.get("avatar_url"),
         "created_at": user.get("created_at", datetime.utcnow())
     }
 
@@ -62,6 +63,7 @@ async def get_optional_current_user(token: Optional[str] = Depends(optional_oaut
             "id": "guest_session_user",
             "email": "guest@cofoundr.os",
             "username": "guest_founder",
+            "avatar_url": None,
             "created_at": datetime.utcnow()
         }
     try:
@@ -77,6 +79,7 @@ async def get_optional_current_user(token: Optional[str] = Depends(optional_oaut
                         "id": str(user["_id"]),
                         "email": user["email"],
                         "username": user["username"],
+                        "avatar_url": user.get("avatar_url"),
                         "created_at": user.get("created_at", datetime.utcnow())
                     }
     except Exception:
@@ -86,6 +89,7 @@ async def get_optional_current_user(token: Optional[str] = Depends(optional_oaut
         "id": "guest_session_user",
         "email": "guest@cofoundr.os",
         "username": "guest_founder",
+        "avatar_url": None,
         "created_at": datetime.utcnow()
     }
 
