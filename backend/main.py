@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import init_db
 from backend.routers import auth, onboarding, documents, chat, health, competitors, opportunities, research
+from backend.startup_validator.routes import router as validator_router
+
 
 app = FastAPI(
     title="Cofoundr OS API",
@@ -58,6 +60,9 @@ app.include_router(health.router)
 app.include_router(competitors.router)
 app.include_router(opportunities.router)
 app.include_router(research.router)
+app.include_router(validator_router, prefix="/api/v1")
+app.include_router(validator_router, prefix="/api/validator")
+
 
 if __name__ == "__main__":
     import uvicorn
@@ -66,5 +71,6 @@ if __name__ == "__main__":
     uvicorn.run("backend.main:app", host=host, port=port, reload=False)
 
 # Trigger reload
+
 
 
