@@ -195,7 +195,7 @@ function Page() {
         subtitle="Manage the documents that ground your AI co-founder and health dashboard. Renames or updates sync vectors in real time."
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total Documents" value={stats.totalDocs.toString()} />
         <StatCard label="Total Vector Chunks" value={stats.totalChunks.toLocaleString()} />
         <StatCard label="Memory Sync Status" value="Online & Synced" />

@@ -9,7 +9,7 @@ class Settings:
     MONGODB_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
     MONGODB_DB_NAME: str = os.getenv("MONGODB_DB_NAME", "cofoundr_os")
     MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")
-    GEMINI_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")  # Map to Mistral API key for compatibility
+    # Note: This project uses Mistral AI exclusively. No Gemini integration.
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
     NEWSDATA_API_KEY: str = os.getenv("NEWSDATA_API_KEY", "")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "cofoundr_super_secret_jwt_key_2026")

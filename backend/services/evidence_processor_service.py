@@ -169,7 +169,7 @@ Return ONLY valid JSON matching this schema:
 """
 
     def call_mistral():
-        for model_name in ["open-mistral-7b", "mistral-small-latest", "mistral-large-latest"]:
+        for model_name in ["mistral-small-latest", "ministral-8b-latest", "open-mistral-7b", "ministral-3b-latest"]:
             try:
                 payload = {
                     "model": model_name,
@@ -178,7 +178,8 @@ Return ONLY valid JSON matching this schema:
                         {"role": "user", "content": prompt}
                     ],
                     "response_format": {"type": "json_object"},
-                    "temperature": 0.2
+                    "temperature": 0.2,
+                    "max_tokens": 2000
                 }
                 headers = {
                     "Content-Type": "application/json",
@@ -190,17 +191,18 @@ Return ONLY valid JSON matching this schema:
                     headers=headers,
                     method="POST"
                 )
-                with urllib.request.urlopen(req, timeout=35) as resp:
+                with urllib.request.urlopen(req, timeout=40) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     content = data["choices"][0]["message"]["content"]
                     parsed = json.loads(content)
                     if isinstance(parsed, dict) and ("entities" in parsed or "events" in parsed):
                         return parsed
             except urllib.error.HTTPError as he:
-                if he.code in [403, 404, 422]:
-                    logger.info(f"[evidence_processor] Model {model_name} unavailable ({he.code}), trying next")
-                    continue
-                raise he
+                logger.info(f"[evidence_processor] Model {model_name} HTTP error ({he.code}), trying next")
+                continue
+            except Exception as ex:
+                logger.warning(f"[evidence_processor] Model {model_name} failed: {ex}")
+                continue
         return {}
 
     try:

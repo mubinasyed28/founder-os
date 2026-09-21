@@ -12,6 +12,35 @@ import {
   ExternalLink, Search, Globe, ChevronRight, HelpCircle
 } from "lucide-react";
 
+function renderSafeContent(val: any): React.ReactNode {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+    return String(val);
+  }
+  if (Array.isArray(val)) {
+    return (
+      <div className="space-y-0.5">
+        {val.map((item, idx) => (
+          <div key={idx}>{renderSafeContent(item)}</div>
+        ))}
+      </div>
+    );
+  }
+  if (typeof val === "object") {
+    return (
+      <div className="mt-1 space-y-1 pl-2 border-l border-primary/30">
+        {Object.entries(val).map(([k, v]) => (
+          <div key={k} className="text-[11px]">
+            <span className="font-semibold text-foreground">{k}: </span>
+            <span className="text-muted-foreground">{renderSafeContent(v)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return String(val);
+}
+
 export const Route = createFileRoute("/app/competitors")({
   component: Page,
 });
@@ -117,7 +146,7 @@ function Page() {
         <PageHeader
           eyebrow="Competitor Intelligence"
           title="Searching the Web..."
-          subtitle="Autonomous agents are generating queries, scouring DuckDuckGo and Tavily, and extracting company profiles."
+          subtitle="Autonomous agents are generating queries, scouring live web sources via Tavily, and extracting company profiles."
         />
         <Panel className="flex flex-col items-center justify-center p-12 text-center">
           <div className="shimmer relative flex size-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 glow-ring mb-6">
@@ -135,7 +164,7 @@ function Page() {
               <Tag tone="primary">Completed</Tag>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">2. DuckDuckGo + Tavily Search</span>
+              <span className="text-muted-foreground">2. Tavily Web Search</span>
               <span className="live-dot text-primary text-[11px] font-medium">Active</span>
             </div>
             <div className="flex items-center justify-between text-xs">
@@ -181,6 +210,7 @@ function Page() {
   // 3. Completed Results Page
   const competitorsList = results?.competitors || [];
   const gaps = results?.gaps || [];
+  const comparison = results?.comparison || null;
 
   return (
     <>
@@ -188,7 +218,7 @@ function Page() {
         <PageHeader
           eyebrow="Competitor Intelligence"
           title={`${competitorsList.length} Players Found`}
-          subtitle="Competitor matrix compiled from live DuckDuckGo and Tavily web research. Not monitored daily."
+          subtitle="Competitor matrix compiled from live Tavily web research. Not monitored daily."
         />
         <button
           onClick={handleTriggerResearch}
@@ -222,7 +252,7 @@ function Page() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-[15px] font-semibold tracking-tight flex items-center gap-1.5">
-                  {c.name}
+                  {renderSafeContent(c.name)}
                   {c.website && (
                     <a 
                       href={c.website} 
@@ -234,7 +264,7 @@ function Page() {
                     </a>
                   )}
                 </h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{c.industry || "General Startup"}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{renderSafeContent(c.industry || "General Startup")}</p>
               </div>
               <Tag tone={c.relevance_score > 75 ? "bad" : c.relevance_score > 45 ? "warn" : "muted"}>
                 Threat {c.relevance_score}
@@ -247,27 +277,31 @@ function Page() {
             <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
               <div className="rounded-lg bg-surface-2 p-2.5">
                 <div className="text-muted-foreground font-medium">Target Market</div>
-                <div className="mt-1 font-semibold truncate" title={c.target_customers}>{c.target_customers || "N/A"}</div>
+                <div className="mt-1 font-semibold truncate" title={typeof c.target_customers === "string" ? c.target_customers : ""}>
+                  {renderSafeContent(c.target_customers || "N/A")}
+                </div>
               </div>
               <div className="rounded-lg bg-surface-2 p-2.5">
                 <div className="text-muted-foreground font-medium">Business Model</div>
-                <div className="mt-1 font-semibold truncate" title={c.business_model}>{c.business_model || "N/A"}</div>
+                <div className="mt-1 font-semibold truncate" title={typeof c.business_model === "string" ? c.business_model : ""}>
+                  {renderSafeContent(c.business_model || "N/A")}
+                </div>
               </div>
             </div>
 
             {/* Highlights bullet list */}
             <div className="mt-4 space-y-2 text-xs flex-1">
               {c.strengths?.length > 0 && (
-                <p><span className="text-primary font-semibold">Strength · </span><span className="text-muted-foreground">{c.strengths[0]}</span></p>
+                <p><span className="text-primary font-semibold">Strength · </span><span className="text-muted-foreground">{renderSafeContent(c.strengths[0])}</span></p>
               )}
               {c.weaknesses?.length > 0 ? (
-                <p><span className="text-[var(--warning)] font-semibold">Weakness · </span><span className="text-muted-foreground">{c.weaknesses[0]}</span></p>
+                <p><span className="text-[var(--warning)] font-semibold">Weakness · </span><span className="text-muted-foreground">{renderSafeContent(c.weaknesses[0])}</span></p>
               ) : (
                 <p><span className="text-muted-foreground font-semibold">Differentiator · </span><span className="text-muted-foreground">No clear gaps listed in search.</span></p>
               )}
               {c.recent_activity?.length > 0 && (
-                <p className="mt-3 rounded-lg bg-surface-2 p-2 text.5 text-muted-foreground truncate">
-                  <span className="font-semibold text-foreground">Latest · </span>{c.recent_activity[0]}
+                <p className="mt-3 rounded-lg bg-surface-2 p-2 text-[11px] text-muted-foreground truncate">
+                  <span className="font-semibold text-foreground">Latest · </span>{renderSafeContent(c.recent_activity[0])}
                 </p>
               )}
             </div>
@@ -286,6 +320,39 @@ function Page() {
         ))}
       </div>
 
+      {/* Comparison Matrix Section (if available) */}
+      {comparison && comparison.dimensions?.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold tracking-tight">Competitive Landscape Matrix</h2>
+            {comparison.summary && (
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed bg-surface-2/60 border border-border/50 rounded-xl p-3.5">
+                {renderSafeContent(comparison.summary)}
+              </p>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {comparison.dimensions.map((dim: any, idx: number) => (
+              <Panel key={idx} className="p-4 flex flex-col justify-between">
+                <div>
+                  <Tag tone="primary">{renderSafeContent(dim.dimension || `Dimension ${idx + 1}`)}</Tag>
+                  <div className="mt-3 space-y-2 text-xs">
+                    <div>
+                      <span className="font-semibold text-foreground">Your Startup: </span>
+                      <span className="text-muted-foreground">{renderSafeContent(dim.startup)}</span>
+                    </div>
+                    <div className="pt-2 border-t border-border/30">
+                      <span className="font-semibold text-foreground">Competitors: </span>
+                      <div className="text-muted-foreground">{renderSafeContent(dim.competitors_summary)}</div>
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Discovered opportunities / Gaps Section */}
       {gaps.length > 0 && (
         <div className="mt-8">
@@ -297,15 +364,16 @@ function Page() {
             {gaps.map((o: any, idx: number) => (
               <Panel key={idx}>
                 <div className="flex items-center gap-2">
-                  <Tag tone="primary">{o.gap_type}</Tag>
+                  <Tag tone="primary">{renderSafeContent(o.gap_type || "Market Gap")}</Tag>
                   <span className="ml-auto text-[11px] text-muted-foreground">Inferred</span>
                 </div>
                 <h3 className="mt-3 flex gap-2 text-[15px] font-semibold leading-snug tracking-tight text-foreground">
-                  {o.title}
+                  {renderSafeContent(o.title)}
                 </h3>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{o.description}</p>
+                <div className="mt-2 text-xs leading-relaxed text-muted-foreground">{renderSafeContent(o.description)}</div>
                 <div className="mt-3 rounded-lg bg-surface-2 p-2.5 text-[11px] text-muted-foreground">
-                  <span className="font-semibold text-foreground">Evidence · </span>{o.evidence}
+                  <span className="font-semibold text-foreground">Evidence · </span>
+                  {renderSafeContent(o.evidence)}
                 </div>
                 <div className="mt-3"><Confidence value={o.confidence || 75} /></div>
               </Panel>

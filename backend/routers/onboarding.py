@@ -144,7 +144,7 @@ async def onboarding_chat(payload: ChatRequest, current_user: dict = Depends(get
     user_msg = {"role": "user", "content": payload.message, "timestamp": datetime.utcnow().isoformat()}
     messages.append(user_msg)
 
-    # 2. Process via Gemini Service
+    # 2. Process via Mistral AI Service
     ai_result = await process_conversational_turn(messages, profile_dict)
 
     assistant_reply = ai_result.get("assistant_reply", "I understood that. Tell me more about your startup vision!")

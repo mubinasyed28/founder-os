@@ -17,36 +17,76 @@ def cosine_similarity(v1: List[float], v2: List[float]) -> float:
         return 0.0
     return dot / (math.sqrt(norm1) * math.sqrt(norm2))
 
-async def retrieve_context_chunks(user_id: str, query_text: str, top_k: int = 6) -> List[Dict[str, Any]]:
-    """Generates query embedding and performs manual cosine similarity retrieval over company chunks."""
+def compute_text_similarity(query: str, doc_text: str) -> float:
+    """Computes token-based cosine similarity between query and document text."""
+    try:
+        from backend.startup_validator.nlp.preprocessing import preprocess_and_filter
+        q_tokens = preprocess_and_filter(query)
+        d_tokens = preprocess_and_filter(doc_text)
+    except Exception:
+        import re
+        q_tokens = [w.lower() for w in re.findall(r'\b[a-zA-Z0-9_]+\b', query) if len(w) > 2]
+        d_tokens = [w.lower() for w in re.findall(r'\b[a-zA-Z0-9_]+\b', doc_text) if len(w) > 2]
+
+    if not q_tokens or not d_tokens:
+        return 0.0
+        
+    from collections import Counter
+    q_counts = Counter(q_tokens)
+    d_counts = Counter(d_tokens)
+    
+    overlap = set(q_counts.keys()).intersection(d_counts.keys())
+    if not overlap:
+        return 0.0
+        
+    dot = sum(q_counts[t] * d_counts[t] for t in overlap)
+    norm_q = math.sqrt(sum(v * v for v in q_counts.values()))
+    norm_d = math.sqrt(sum(v * v for v in d_counts.values()))
+    if norm_q == 0 or norm_d == 0:
+        return 0.0
+    return dot / (norm_q * norm_d)
+
+async def retrieve_context_chunks(user_id: str, query_text: str, top_k: int = 15) -> List[Dict[str, Any]]:
+    """
+    Retrieves candidate chunks strictly scoped to the authenticated company,
+    calculating cosine similarity over dense embeddings, or falling back to
+    token-based semantic cosine similarity.
+    """
     db = await get_db()
     
     # 1. Embed query
     query_vector = generate_embedding(query_text)
-    if not any(query_vector):
-        logger.warning("Generated query embedding is empty/zeros.")
-        return []
-        
-    # 2. Retrieve all chunks for this user
-    cursor = db.chunks.find({"user_id": user_id})
-    all_chunks = await cursor.to_list(length=2000)
+    has_dense_embedding = any(query_vector)
+    
+    # 2. Retrieve all chunks strictly for this company/user
+    cursor = db.chunks.find({"$or": [{"company_id": user_id}, {"user_id": user_id}]})
+    all_chunks = await cursor.to_list(length=3000)
     
     if not all_chunks:
         return []
         
-    # 3. Calculate cosine similarity in memory
+    # 3. Calculate similarity scores
     scored_chunks = []
     for chunk in all_chunks:
         embedding = chunk.get("embedding")
-        if not embedding or not isinstance(embedding, list):
-            continue
-            
-        score = cosine_similarity(query_vector, embedding)
+        text = chunk.get("text", "")
+        method = "dense_embedding"
+        
+        if has_dense_embedding and embedding and isinstance(embedding, list) and any(embedding):
+            score = cosine_similarity(query_vector, embedding)
+        else:
+            # Semantic token-based cosine similarity fallback
+            score = compute_text_similarity(query_text, text)
+            method = "semantic_tfidf"
+
         scored_chunks.append({
-            "text": chunk.get("text", ""),
-            "filename": chunk.get("metadata", {}).get("filename", "Uploaded Document"),
-            "category": chunk.get("metadata", {}).get("category", "other"),
-            "score": score
+            "document_id": str(chunk.get("document_id") or ""),
+            "text": text,
+            "filename": chunk.get("metadata", {}).get("filename") or chunk.get("filename", "Uploaded Document"),
+            "category": chunk.get("metadata", {}).get("category") or chunk.get("metadata", {}).get("document_type", "other"),
+            "score": score,
+            "scoring_method": method,
+            "chunkIndex": chunk.get("chunkIndex", 0)
         })
         
     # 4. Sort and return top K

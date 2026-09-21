@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "registry_version": "1.0.0",
+  "last_updated": "2026-09-09",
+  "models": {
+    "revenue_forecast": {
+      "model_id": "revenue_forecast_v1",
+      "name": "DecisionSimulator-RevenueForecast-v1",
+      "model_path": "ml/models/decision_simulator_revenue_v1.json",
+      "baseline_path": "ml/models/model1_ridge_baseline.joblib",
+      "encoders_path": "ml/models/model1_label_encoders.joblib",
+      "metadata_path": "ml/models/model1_metadata.json",
+      "metrics_path": "ml/models/model1_training_metrics.json",
+      "feature_importance_path": "ml/models/model1_reg_feature_importance.csv",
+      "model_type": "xgb_regressor",
+      "version": "1.0.0",
+      "target": "next_month_mrr",
+      "target_unit": "USD",
+      "forecast_horizon": "1_month",
+      "dataset": "RavenStack SaaS Subscription & Churn Analytics",
+      "performance_summary": {
+        "xgboost_mae": 3499.79,
+        "ridge_mae": 2748.66,
+        "naive_mae": 2681.17,
+        "xgboost_rmse": 6748.16,
+        "ridge_rmse": 5255.17,
+        "directional_accuracy_pct": 47.10
+      },
+      "limitations": [
+        "XGBRegressor is NOT the best-performing model on raw MAE/RMSE; Ridge regression achieved lower RMSE ($5,255 vs $6,748) and higher R² (0.8745 vs 0.7931), and Naive Persistence achieved lower MAE due to strong monthly autoregression ($2,681 vs $3,499).",
+        "Forecasts represent correlational projections conditioned on current state, NOT guaranteed causal intervention outcomes.",
+        "Forecast horizon is strictly 1 calendar month forward."
+      ],
+      "serving_recommendation": "Use hybrid prediction: preserve current MRR baseline and apply model-predicted delta."
+    },
+    "churn_risk": {
+      "model_id": "churn_risk_v1",
+      "name": "DecisionSimulator-ChurnRisk-v1",
+      "model_path": "ml/models/decision_simulator_churn_v1.json",
+      "baseline_path": "ml/models/model1_logreg_baseline.joblib",
+      "encoders_path": "ml/models/model1_label_encoders.joblib",
+      "metadata_path": "ml/models/model1_metadata.json",
+      "metrics_path": "ml/models/model1_training_metrics.json",
+      "feature_importance_path": "ml/models/model1_cls_feature_importance.csv",
+      "model_type": "xgb_classifier",
+      "version": "1.0.0",
+      "target": "target_churn_event_t1",
+      "target_unit": "probability",
+      "forecast_horizon": "1_month",
+      "dataset": "RavenStack SaaS Subscription & Churn Analytics",
+      "performance_summary": {
+        "roc_auc": 0.5583,
+        "pr_auc": 0.1708,
+        "precision": 0.2114,
+        "recall": 0.0945,
+        "brier_score": 0.1311
+      },
+      "limitations": [
+        "Event class imbalance (~9.4% base rate) limits single-month recall in out-of-time splits.",
+        "Model signals probability of subscription contraction or churn, not guaranteed customer loss."
+      ],
+      "serving_recommendation": "Use as an early warning probability score alongside usage metrics."
+    },
+    "startup_survival": {
+      "model_id": "startup_survival_v1",
+      "name": "DecisionSimulator-StartupSurvival-v1",
+      "model_path": "ml/models/decision_simulator_startup_risk_v1.json",
+      "baseline_path": "ml/models/model2_rf_baseline.joblib",
+      "encoders_path": "ml/models/model2_label_encoders.joblib",
+      "metadata_path": "ml/models/model2_metadata.json",
+      "metrics_path": "ml/models/model2_training_metrics.json",
+      "feature_importance_path": "ml/models/model2_feature_importance.csv",
+      "model_type": "xgb_classifier",
+      "version": "1.0.0",
+      "target": "failed",
+      "target_unit": "probability",
+      "forecast_horizon": "terminal_outcome",
+      "stage": "stage_0",
+      "dataset": "Startup & Founder Survival Master Dataset (48,000 records)",
+      "performance_summary": {
+        "roc_auc": 0.6821,
+        "pr_auc": 0.8020,
+        "accuracy": 0.6813,
+        "f1": 0.7855,
+        "brier_score": 0.2044
+      },
+      "limitations": [
+        "XGBoost is the best-performing tested classifier with ROC-AUC ~0.682 and Brier score 0.2044; it provides a probabilistic risk assessment, not deterministic certainty.",
+        "Features represent Stage 0 (Day-0 / Pre-Seed) observation point. Post-hoc variables (lifespan, total capital raised, failure reason) are strictly excluded to avoid leakage.",
+        "Dataset is procedurally generated and calibrated to aggregate US BLS and CB Insights survival statistics."
+      ],
+      "serving_recommendation": "Use as a scenario sensitivity risk index for runway, burn rate, and customer validation."
+    }
+  }
+}

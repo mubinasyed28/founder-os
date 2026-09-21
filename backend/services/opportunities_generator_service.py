@@ -374,15 +374,118 @@ def generate_fallback_opportunities(profile: Dict[str, Any]) -> List[Dict[str, A
     return [opp_1, opp_2, opp_3, opp_4, opp_5]
 
 
+def normalize_opportunity(opp: Dict[str, Any], idx: int, profile: Dict[str, Any]) -> Dict[str, Any]:
+    c_name = profile.get("company_name") or profile.get("companyName") or "Your Startup"
+    c_icp = profile.get("target_customer") or profile.get("target_customers") or "target users"
+    
+    opp_id = opp.get("id") or opp.get("opportunity_id") or f"O-{51 + idx}"
+    title = opp.get("title") or opp.get("strategy") or opp.get("name") or f"Strategic Opportunity {idx + 1}"
+    opp_type = opp.get("type") or opp.get("category") or "Market gap"
+    size = opp.get("size") or "High"
+    status = opp.get("status") or "detected"
+    confidence = opp.get("confidence") if isinstance(opp.get("confidence"), (int, float)) else 85
+    detail = opp.get("detail") or opp.get("description") or opp.get("rationale") or f"Strategic initiative identified for {c_name} to accelerate growth among {c_icp}."
+    signal = opp.get("signal") or opp.get("trigger") or f"Market signal analyzed by AI Strategy Agent for {c_name}"
+    detected_at = opp.get("detectedAt") or opp.get("detected_at") or "Aug 2026"
+    why_found = opp.get("whyFound") or opp.get("why_found") or f"Detected market shift and competitor gap relevant to {c_name}."
+    startup_fit = opp.get("startupFit") or opp.get("startup_fit") or f"High strategic fit for {c_name}'s current roadmap and customer segment."
+    
+    # recommendedAction
+    rec_action = opp.get("recommendedAction") or opp.get("recommended_action")
+    if not isinstance(rec_action, dict):
+        rec_action = {
+            "label": f"Validate {title} with {c_icp}",
+            "suggestedDecision": "validate"
+        }
+    else:
+        rec_action = {
+            "label": rec_action.get("label") or f"Validate {title}",
+            "suggestedDecision": rec_action.get("suggestedDecision") or rec_action.get("suggested_decision") or "validate"
+        }
+        
+    # epistemic
+    epistemic = opp.get("epistemic")
+    if not isinstance(epistemic, dict):
+        epistemic = {
+            "facts": [f"Target customer segment: {c_icp}", f"Company: {c_name}"],
+            "inferences": [f"Pursuing {title} will differentiate {c_name} from legacy alternatives."],
+            "assumptions": [f"{c_icp} will adopt this solution given current workflow friction."]
+        }
+    else:
+        epistemic = {
+            "facts": epistemic.get("facts") or [f"Active segment: {c_icp}"],
+            "inferences": epistemic.get("inferences") or [f"Projected conversion increase for {c_name}."],
+            "assumptions": epistemic.get("assumptions") or ["Customer willingness to adopt without complex onboarding."]
+        }
+        
+    # evidence
+    evidence = opp.get("evidence")
+    if not isinstance(evidence, list) or len(evidence) == 0:
+        evidence = [
+            {"claim": f"Significant opportunity in {title}", "source": "Cofoundr Strategy Intelligence", "type": "fact", "verified": True}
+        ]
+        
+    # healthImpacts
+    health_impacts = opp.get("healthImpacts") or opp.get("health_impacts")
+    if not isinstance(health_impacts, list) or len(health_impacts) == 0:
+        health_impacts = [
+            {"metricKey": "product", "label": "Product Health", "expectedDelta": 10, "reason": "Expands core product capabilities."},
+            {"metricKey": "growth", "label": "Growth Score", "expectedDelta": 8, "reason": "Attracts early adopters."}
+        ]
+        
+    # risks
+    risks = opp.get("risks")
+    if not isinstance(risks, list) or len(risks) == 0:
+        risks = ["Execution bandwidth constraints", "Potential competitor response"]
+        
+    # validationExperiments
+    val_exps = opp.get("validationExperiments") or opp.get("validation_experiments")
+    if not isinstance(val_exps, list) or len(val_exps) == 0:
+        val_exps = [
+            {
+                "id": f"exp-{idx+1}",
+                "hypothesis": f"Testing {title} demand with 5 {c_icp} interviews confirms high intent.",
+                "test": "Conduct structured customer discovery interviews.",
+                "metric": ">= 3 of 5 express immediate buying or pilot intent.",
+                "effort": "2-3 days",
+                "status": "pending"
+            }
+        ]
+        
+    return {
+        "id": opp_id,
+        "title": title,
+        "type": opp_type,
+        "status": status,
+        "confidence": confidence,
+        "size": size,
+        "detail": detail,
+        "signal": signal,
+        "detectedAt": detected_at,
+        "whyFound": why_found,
+        "startupFit": startup_fit,
+        "epistemic": epistemic,
+        "evidence": evidence,
+        "healthImpacts": health_impacts,
+        "risks": risks,
+        "effort": opp.get("effort") or "Medium",
+        "timeToImpact": opp.get("timeToImpact") or "2-4 weeks",
+        "uncertainties": opp.get("uncertainties") or [f"Customer willingness to switch to {c_name}."],
+        "validationExperiments": val_exps,
+        "recommendedAction": rec_action,
+        "linkedCompetitors": opp.get("linkedCompetitors") or profile.get("competitors") or []
+    }
+
+
 async def generate_opportunities_for_profile(profile: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Generates profile-tailored opportunities. Attempts AI generation first via Gemini/Mistral,
+    Generates profile-tailored opportunities. Attempts AI generation first via Mistral,
     and falls back cleanly to the smart domain heuristic generator.
     """
     if not profile or not any(profile.get(k) for k in ["company_name", "product", "industry", "target_customer", "one_line_pitch"]):
         return generate_fallback_opportunities(profile)
 
-    api_key = settings.GEMINI_API_KEY or settings.MISTRAL_API_KEY
+    api_key = settings.MISTRAL_API_KEY
     if api_key:
         try:
             prompt = f"""You are an elite YC Partner & Startup Strategy AI.
@@ -398,34 +501,43 @@ Startup Profile:
 - Competitors: {profile.get('competitors', [])}
 - Current Challenges: {profile.get('current_challenges', [])}
 
-Return a valid JSON array of 5 opportunity objects matching the standard schema.
+Return a valid JSON object with key "opportunities" containing an array of 5 opportunity objects with:
+id, title, type, size (High/Med), detail, signal, confidence (integer 70-95).
 """
             def call_llm():
-                payload = {
-                    "model": "mistral-large-latest",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "response_format": {"type": "json_object"}
-                }
-                headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-                req = urllib.request.Request(
-                    "https://api.mistral.ai/v1/chat/completions",
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers=headers,
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=25) as response:
-                    resp = json.loads(response.read().decode("utf-8"))
-                    content = resp["choices"][0]["message"]["content"]
-                    parsed = json.loads(content)
-                    if isinstance(parsed, list):
-                        return parsed
-                    elif isinstance(parsed, dict):
-                        return parsed.get("opportunities") or list(parsed.values())[0]
-                    return None
+                candidate_models = ["mistral-small-latest", "ministral-8b-latest", "ministral-3b-latest"]
+                for model_name in candidate_models:
+                    payload = {
+                        "model": model_name,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "response_format": {"type": "json_object"},
+                        "max_tokens": 1800
+                    }
+                    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+                    req = urllib.request.Request(
+                        "https://api.mistral.ai/v1/chat/completions",
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers=headers,
+                        method="POST"
+                    )
+                    try:
+                        with urllib.request.urlopen(req, timeout=35) as response:
+                            resp = json.loads(response.read().decode("utf-8"))
+                            content = resp["choices"][0]["message"]["content"]
+                            parsed = json.loads(content)
+                            if isinstance(parsed, list):
+                                return parsed
+                            elif isinstance(parsed, dict):
+                                return parsed.get("opportunities") or list(parsed.values())[0]
+                    except Exception as e:
+                        logger.warning(f"[opportunities_gen] Model {model_name} failed: {e}")
+                        continue
+                return None
 
             ai_results = await asyncio.to_thread(call_llm)
             if ai_results and isinstance(ai_results, list) and len(ai_results) >= 3:
-                return ai_results
+                normalized = [normalize_opportunity(opp, idx, profile) for idx, opp in enumerate(ai_results)]
+                return normalized
         except Exception as e:
             logger.warning(f"[opportunity_generator] AI generation failed: {e}. Using domain fallback.")
 

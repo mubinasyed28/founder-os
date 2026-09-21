@@ -5,9 +5,34 @@ from bson import ObjectId
 from backend.models import DocumentMeta, DocumentRenameRequest, DocumentReclassifyRequest
 from backend.auth import get_optional_current_user
 from backend.database import get_db
-from backend.services.document_processor import process_and_index_document, delete_document_and_chunks
+from backend.services.document_processor import (
+    process_and_index_document,
+    delete_document_and_chunks,
+    generate_document_summary_and_topics,
+    backfill_missing_document_summaries
+)
 
 router = APIRouter(prefix="/api/documents", tags=["Documents"])
+
+def _doc_to_meta(doc: dict) -> DocumentMeta:
+    return DocumentMeta(
+        id=str(doc["_id"]),
+        filename=doc["filename"],
+        category=doc.get("category", "other"),
+        document_type=doc.get("document_type") or doc.get("category", "other"),
+        company_id=doc.get("company_id") or doc.get("user_id"),
+        company_name=doc.get("company_name"),
+        short_summary=doc.get("short_summary"),
+        document_topics=doc.get("document_topics") or [],
+        mimeType=doc.get("mimeType"),
+        fileSizeBytes=doc.get("fileSizeBytes", 0),
+        chunkCount=doc.get("chunkCount", 0),
+        status=doc.get("status", "indexed"),
+        uploadedAt=doc.get("uploadedAt"),
+        updatedAt=doc.get("updatedAt") or doc.get("uploadedAt"),
+        source=doc.get("source", "upload"),
+        error=doc.get("error")
+    )
 
 @router.post("/upload", response_model=DocumentMeta)
 async def upload_document_endpoint(
@@ -34,17 +59,7 @@ async def upload_document_endpoint(
         if not doc:
             raise HTTPException(status_code=500, detail="Document failed to save after processing.")
             
-        return DocumentMeta(
-            id=str(doc["_id"]),
-            filename=doc["filename"],
-            category=doc.get("category", "other"),
-            mimeType=doc.get("mimeType"),
-            fileSizeBytes=doc["fileSizeBytes"],
-            chunkCount=doc["chunkCount"],
-            status=doc["status"],
-            uploadedAt=doc["uploadedAt"],
-            error=doc.get("error")
-        )
+        return _doc_to_meta(doc)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -60,29 +75,22 @@ async def list_documents_endpoint(
     user_id = current_user["id"]
     db = await get_db()
     
-    query: Dict[str, Any] = {"user_id": user_id}
+    # Auto-backfill any documents missing summary
+    try:
+        await backfill_missing_document_summaries(user_id)
+    except Exception:
+        pass
+
+    query: Dict[str, Any] = {"$or": [{"company_id": user_id}, {"user_id": user_id}]}
     if category:
-        query["category"] = category
+        query["$and"] = [{"$or": [{"category": category}, {"document_type": category}]}]
     if search:
         query["filename"] = {"$regex": search, "$options": "i"}
         
     cursor = db.documents.find(query).sort("uploadedAt", -1)
     docs = await cursor.to_list(length=100)
     
-    result = []
-    for doc in docs:
-        result.append(DocumentMeta(
-            id=str(doc["_id"]),
-            filename=doc["filename"],
-            category=doc.get("category", "other"),
-            mimeType=doc.get("mimeType"),
-            fileSizeBytes=doc["fileSizeBytes"],
-            chunkCount=doc["chunkCount"],
-            status=doc["status"],
-            uploadedAt=doc["uploadedAt"],
-            error=doc.get("error")
-        ))
-    return result
+    return [_doc_to_meta(doc) for doc in docs]
 
 @router.get("/stats")
 async def get_document_stats_endpoint(current_user: dict = Depends(get_optional_current_user)):
@@ -153,17 +161,7 @@ async def rename_document_endpoint(
         )
         
     updated_doc = await db.documents.find_one({"_id": ObjectId(doc_id)})
-    return DocumentMeta(
-        id=str(updated_doc["_id"]),
-        filename=updated_doc["filename"],
-        category=updated_doc.get("category", "other"),
-        mimeType=updated_doc.get("mimeType"),
-        fileSizeBytes=updated_doc["fileSizeBytes"],
-        chunkCount=updated_doc["chunkCount"],
-        status=updated_doc["status"],
-        uploadedAt=updated_doc["uploadedAt"],
-        error=updated_doc.get("error")
-    )
+    return _doc_to_meta(updated_doc)
 
 @router.put("/{doc_id}/reclassify", response_model=DocumentMeta)
 async def reclassify_document_endpoint(
@@ -186,27 +184,24 @@ async def reclassify_document_endpoint(
     # Update document record
     await db.documents.update_one(
         {"_id": ObjectId(doc_id)},
-        {"$set": {"category": new_category, "updatedAt": datetime.utcnow()}}
+        {"$set": {
+            "category": new_category,
+            "document_type": new_category,
+            "updatedAt": datetime.utcnow()
+        }}
     )
     
     # Update category inside all chunks' metadata
     await db.chunks.update_many(
         {"document_id": doc_id, "user_id": user_id},
-        {"$set": {"metadata.category": new_category}}
+        {"$set": {
+            "metadata.category": new_category,
+            "metadata.document_type": new_category
+        }}
     )
     
     updated_doc = await db.documents.find_one({"_id": ObjectId(doc_id)})
-    return DocumentMeta(
-        id=str(updated_doc["_id"]),
-        filename=updated_doc["filename"],
-        category=updated_doc.get("category", "other"),
-        mimeType=updated_doc.get("mimeType"),
-        fileSizeBytes=updated_doc["fileSizeBytes"],
-        chunkCount=updated_doc["chunkCount"],
-        status=updated_doc["status"],
-        uploadedAt=updated_doc["uploadedAt"],
-        error=updated_doc.get("error")
-    )
+    return _doc_to_meta(updated_doc)
 
 @router.post("/{doc_id}/replace", response_model=DocumentMeta)
 async def replace_document_endpoint(
@@ -250,6 +245,7 @@ async def replace_document_endpoint(
         
         # Extract new text
         text = extract_text_from_bytes(file_bytes, file.filename, file.content_type or "")
+        summary, topics = generate_document_summary_and_topics(text, file.filename)
         
         # Chunk text
         chunks = chunk_text(text, settings.CHUNK_SIZE, settings.CHUNK_OVERLAP)
@@ -262,12 +258,14 @@ async def replace_document_endpoint(
             await db.chunks.insert_one({
                 "document_id": doc_id,
                 "user_id": user_id,
+                "company_id": user_id,
                 "text": chunk,
                 "embedding": embedding,
                 "chunkIndex": idx,
                 "metadata": {
                     "filename": file.filename,
-                    "category": current_category
+                    "category": current_category,
+                    "document_type": current_category
                 },
                 "createdAt": datetime.utcnow()
             })
@@ -280,22 +278,17 @@ async def replace_document_endpoint(
                 "status": "indexed",
                 "chunkCount": stored_chunks,
                 "fileSizeBytes": len(file_bytes),
+                "company_id": user_id,
+                "document_type": current_category,
+                "short_summary": summary,
+                "document_topics": topics,
+                "updatedAt": datetime.utcnow(),
                 "processedAt": datetime.utcnow()
             }}
         )
         
         updated_doc = await db.documents.find_one({"_id": ObjectId(doc_id)})
-        return DocumentMeta(
-            id=str(updated_doc["_id"]),
-            filename=updated_doc["filename"],
-            category=updated_doc.get("category", "other"),
-            mimeType=updated_doc.get("mimeType"),
-            fileSizeBytes=updated_doc["fileSizeBytes"],
-            chunkCount=updated_doc["chunkCount"],
-            status=updated_doc["status"],
-            uploadedAt=updated_doc["uploadedAt"],
-            error=updated_doc.get("error")
-        )
+        return _doc_to_meta(updated_doc)
     except Exception as e:
         await db.documents.update_one(
             {"_id": ObjectId(doc_id)},

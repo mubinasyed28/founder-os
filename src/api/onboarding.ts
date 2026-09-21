@@ -5,7 +5,7 @@
  * 1. Generates a natural, intelligent reply understanding what the founder said.
  * 2. Extracts and updates the structured 25-field Company Profile in real-time.
  *
- * Uses Gemini's `responseMimeType: "application/json"` + `responseSchema`
+ * Uses Mistral's structured JSON output mode
  * to guarantee structured JSON output on every response — no markdown fences,
  * no conversational text outside the JSON structure.
  */
@@ -45,7 +45,7 @@ export type CompanyProfileFields = {
   long_term_vision: string;
 };
 
-// ── Structured Response Type from Gemini ─────────────────────────────
+// ── Structured Response Type from Mistral ─────────────────────────────
 
 type OnboardingAIResponse = {
   assistant_reply: string;
@@ -54,7 +54,7 @@ type OnboardingAIResponse = {
   missing_information: string[];
 };
 
-// ── Response Schema for Gemini's structured output mode ──────────────
+// ── Response Schema for Mistral's structured output mode ──────────────
 
 const ONBOARDING_RESPONSE_SCHEMA = {
   type: "object",
@@ -201,8 +201,8 @@ export const onboardingChat = createServerFn({ method: "POST" })
     let confidenceScore = calculateCompleteness(profile);
     let missingInformation: string[] = [];
 
-    // Try Gemini structured JSON call
-    const apiKey = process.env["GEMINI_API_KEY"];
+    // Try Mistral structured JSON call
+    const apiKey = process.env["MISTRAL_API_KEY"];
     if (apiKey) {
       try {
         // Format conversation transcript
@@ -223,11 +223,11 @@ export const onboardingChat = createServerFn({ method: "POST" })
         confidenceScore = aiResult.confidence_score ?? calculateCompleteness({ ...profile, ...profileUpdates });
         missingInformation = aiResult.missing_information || [];
       } catch (err) {
-        console.warn("[onboarding] Gemini structured JSON call failed, using fallback:", err);
+        console.warn("[onboarding] Mistral structured JSON call failed, using fallback:", err);
       }
     }
 
-    // Local Fallback if Gemini key missing or failed
+    // Local Fallback if Mistral key missing or failed
     if (!assistantReply) {
       const lastUserMsg = messages[messages.length - 1]?.text.toLowerCase().trim() || "";
       const userCount = messages.filter((m) => m.role === "user").length;

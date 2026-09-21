@@ -348,7 +348,7 @@ What are the leanest validation steps, and how should we weigh the trade-offs vs
         </Panel>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredOpportunities.map((o) => {
+          {filteredOpportunities.map((o, idx) => {
             const isPursued = o.status === "pursued";
             const isValidating = o.status === "validating";
             const isParked = o.status === "parked";
@@ -356,7 +356,7 @@ What are the leanest validation steps, and how should we weigh the trade-offs vs
 
             return (
               <Panel
-                key={o.id}
+                key={o.id || `opp-panel-${idx}`}
                 className={cn(
                   "flex flex-col justify-between transition-all duration-200 hover:border-primary/40",
                   selectedOppId === o.id && "ring-2 ring-primary/60 border-primary"

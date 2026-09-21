@@ -3,7 +3,7 @@
  *
  * Pipeline:
  * User Question → Embed Question → Atlas Vector Search / Similarity Search on Chunks
- * → Build Context (Company Profile + Top Chunks) → Gemini Chat Completion
+ * → Build Context (Company Profile + Top Chunks) → Mistral Chat Completion
  * → Save Conversation to MongoDB → Return grounded answer with citations.
  */
 import { createServerFn } from "@tanstack/react-start";
@@ -234,14 +234,14 @@ ${retrievedChunksText || "No document chunks retrieved for this query."}
 5. If the user asks to analyze, summarize, or reference the document they just uploaded (or similar general requests), you MUST analyze and summarize the retrieved documents in the context (such as TSLA-Q2-2026-Update.pdf), even if they seem unrelated to their company profile. Do not refuse, say you cannot access it, or ask the user to upload it again.
 6. Keep your tone encouraging, sharp, and concise.`;
 
-    // 4. Generate Response from Gemini
-    steps.push("Generating response via Mistral Large");
-    const geminiMessages: ChatMessage[] = messages.map((m) => ({
+    // 4. Generate Response from Mistral
+    steps.push("Generating response via Mistral AI");
+    const mistralMessages: ChatMessage[] = messages.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       text: m.text,
     }));
 
-    const responseText = await chatCompletion(geminiMessages, RAG_SYSTEM_PROMPT);
+    const responseText = await chatCompletion(mistralMessages, RAG_SYSTEM_PROMPT);
 
     // 5. Save Conversation in MongoDB
     let convId = conversationId;

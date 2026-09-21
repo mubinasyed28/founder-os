@@ -75,11 +75,18 @@ class DocumentMeta(BaseModel):
     id: str
     filename: str
     category: str = "other"  # "business_plan", "financial_report", "pitch_deck", "research", "blueprint", "other"
+    document_type: Optional[str] = None
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    short_summary: Optional[str] = None
+    document_topics: List[str] = Field(default_factory=list)
     mimeType: Optional[str] = None
     fileSizeBytes: int
     chunkCount: int
     status: str  # "processing", "indexed", "failed"
     uploadedAt: datetime
+    updatedAt: Optional[datetime] = None
+    source: str = "upload"
     error: Optional[str] = None
 
 class DocumentRenameRequest(BaseModel):

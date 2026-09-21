@@ -8,6 +8,35 @@ import {
   TrendingUp, Award, AlertCircle, FileText, ChevronRight
 } from "lucide-react";
 
+function renderSafeContent(val: any): React.ReactNode {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+    return String(val);
+  }
+  if (Array.isArray(val)) {
+    return (
+      <div className="space-y-0.5">
+        {val.map((item, idx) => (
+          <div key={idx}>{renderSafeContent(item)}</div>
+        ))}
+      </div>
+    );
+  }
+  if (typeof val === "object") {
+    return (
+      <div className="mt-1 space-y-1 pl-2 border-l border-primary/30">
+        {Object.entries(val).map(([k, v]) => (
+          <div key={k} className="text-[11px]">
+            <span className="font-semibold text-foreground">{k}: </span>
+            <span className="text-muted-foreground">{renderSafeContent(v)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return String(val);
+}
+
 export const Route = createFileRoute("/app/competitors/$id")({
   component: CompetitorDetail,
 });
@@ -98,7 +127,7 @@ function CompetitorDetail() {
       </div>
 
       {/* Metadata Panel */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { icon: Calendar, label: "Founded Year", val: competitor.founded_year || "Not found in search" },
           { icon: MapPin, label: "HQ Location", val: competitor.location || "Not found in search" },
@@ -137,7 +166,7 @@ function CompetitorDetail() {
               </div>
 
               {(competitor.mission || competitor.vision) && (
-                <div className="border-t border-border/40 pt-4 grid grid-cols-2 gap-4">
+                <div className="border-t border-border/40 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {competitor.mission && (
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mission</h4>
@@ -256,8 +285,8 @@ function CompetitorDetail() {
                     <div key={i} className="grid grid-cols-2 text-[11px] gap-2 pt-1">
                       <span className="text-muted-foreground font-medium">{label}</span>
                       <div className="text-[10px] space-y-1">
-                        <div><span className="text-muted-foreground font-medium">Them: </span>{compVal || "N/A"}</div>
-                        <div><span className="text-primary font-medium">You: </span>{startupVal || "N/A"}</div>
+                        <div><span className="text-muted-foreground font-medium">Them: </span>{renderSafeContent(compVal || "N/A")}</div>
+                        <div><span className="text-primary font-medium">You: </span>{renderSafeContent(startupVal || "N/A")}</div>
                       </div>
                     </div>
                   ))}
@@ -271,7 +300,7 @@ function CompetitorDetail() {
             <Panel title="Recent Activity">
               <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-2">
                 {competitor.recent_activity.map((act: string, i: number) => (
-                  <li key={i}>{act}</li>
+                  <li key={i}>{renderSafeContent(act)}</li>
                 ))}
               </ul>
             </Panel>

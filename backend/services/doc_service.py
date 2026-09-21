@@ -42,7 +42,7 @@ async def process_document_and_extract(
     filename: str,
     current_profile: Dict[str, Any]
 ) -> Tuple[str, Dict[str, Any]]:
-    """Extracts text from uploaded document and asks Gemini to extract startup details."""
+    """Extracts text from uploaded document and asks Mistral AI to extract startup details."""
     extracted_text = extract_text_from_file(file_bytes, filename)
     
     apiKey = settings.MISTRAL_API_KEY
@@ -75,40 +75,52 @@ async def process_document_and_extract(
             }
 
             def call_mistral():
-                payload = {
-                    "model": "mistral-large-latest",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": f"You are a structured data extractor. Return JSON matching this format: {json.dumps(schema_desc)}"
+                candidate_models = ["mistral-small-latest", "ministral-8b-latest", "open-mistral-7b", "ministral-3b-latest"]
+                last_err = None
+                for model_name in candidate_models:
+                    payload = {
+                        "model": model_name,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": f"You are a structured data extractor. Return JSON matching this format: {json.dumps(schema_desc)}"
+                            },
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        "response_format": {
+                            "type": "json_object"
                         },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "response_format": {
-                        "type": "json_object"
+                        "max_tokens": 1500
                     }
-                }
-                
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {apiKey}"
-                }
-                
-                req = urllib.request.Request(
-                    "https://api.mistral.ai/v1/chat/completions",
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers=headers,
-                    method="POST"
-                )
-                
-                with urllib.request.urlopen(req, timeout=30) as response:
-                    resp_data = response.read().decode("utf-8")
-                    resp_json = json.loads(resp_data)
-                    content = resp_json["choices"][0]["message"]["content"]
-                    return json.loads(content.strip())
+                    
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {apiKey}"
+                    }
+                    
+                    req = urllib.request.Request(
+                        "https://api.mistral.ai/v1/chat/completions",
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers=headers,
+                        method="POST"
+                    )
+                    
+                    try:
+                        with urllib.request.urlopen(req, timeout=40) as response:
+                            resp_data = response.read().decode("utf-8")
+                            resp_json = json.loads(resp_data)
+                            content = resp_json["choices"][0]["message"]["content"]
+                            return json.loads(content.strip())
+                    except Exception as e:
+                        logger.warning(f"[doc_service] Model {model_name} failed: {e}")
+                        last_err = e
+                        continue
+                if last_err:
+                    raise last_err
+                raise RuntimeError("All Mistral doc extraction candidate models failed")
 
             parsed = await asyncio.to_thread(call_mistral)
             ack = parsed.get("acknowledgement", f"I've read through {filename} and extracted key details into your company profile!")

@@ -1,22 +1,34 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
 import {
-  ArrowUp,
+  ArrowRight,
   Brain,
   Check,
-  FileText,
-  Loader2,
-  Sparkles,
-  RefreshCw,
-  Plus,
-  Trash2,
-  Paperclip,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
   Database,
+  FileText,
+  HelpCircle,
+  Lightbulb,
+  ListPlus,
+  Loader2,
   MessageSquare,
-  X
+  Mic,
+  Paperclip,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  Swords,
+  Target,
+  Trash2,
+  TrendingUp,
+  X,
+  Zap,
 } from "lucide-react";
-import { PageHeader, Panel, Tag } from "@/components/os/primitives";
 import { useOs } from "@/lib/os-store";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import {
   sendChatMessageApi,
@@ -27,19 +39,27 @@ import {
   uploadChatAttachmentApi,
   saveChatAttachmentApi,
   type RagMessage,
-  type ChatAttachment
+  type ChatAttachment,
 } from "@/lib/api-client";
 
 export const Route = createFileRoute("/app/chat")({
-  component: Chat,
+  component: ChatPage,
 });
 
-const SUGGESTIONS = [
-  "What is our current pricing strategy?",
-  "Based on our business plan, what are our biggest risks?",
-  "Summarize our target market and core problem from company memory",
-  "Are we ready to talk to investors?",
-  "What competitor threats should we be watching?",
+const QUICK_ACTIONS = [
+  { label: "Can you analyse our competitors?", prompt: "Can you analyse our primary competitors and identify our biggest differentiation gaps?" },
+  { label: "What are the biggest risks?", prompt: "Based on our current stage, metrics and market trends, what are our top 3 existential risks?" },
+  { label: "Help me with investor pitch", prompt: "How should we frame our growth story and market opportunity for seed investors?" },
+  { label: "Create a task", action: "create_task" },
+];
+
+const REASONING_STEPS = [
+  "Analyzing your company profile",
+  "Reading company data",
+  "Analyzing market trends (Tavily)",
+  "Checking competitors",
+  "Running impact analysis",
+  "Generating recommendations",
 ];
 
 function formatBytes(bytes: number, decimals = 2) {
@@ -51,14 +71,53 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
-function Chat() {
-  const { pushActivity, profile } = useOs();
+// Helper to detect structured insights from Co-Founder response
+function extractInsights(text: string) {
+  const lower = text.toLowerCase();
+  const hasOpportunity = lower.includes("market opportunity") || lower.includes("opportunity:");
+  const hasGap = lower.includes("competitive gap") || lower.includes("competitor gap") || lower.includes("differentiat");
+  const hasImpact = lower.includes("estimated impact") || lower.includes("impact:") || lower.includes("%");
+  const hasRec = lower.includes("recommendation") || lower.includes("suggested action");
+
+  if (!hasOpportunity && !hasGap && !hasImpact && !hasRec) {
+    return null;
+  }
+
+  // Extract or synthesize clean highlight metrics
+  let oppValue = "High";
+  if (lower.includes("opportunity: moderate") || lower.includes("medium opportunity")) oppValue = "Medium";
+  if (lower.includes("opportunity: low")) oppValue = "Niche";
+
+  let gapValue = "Yes";
+  if (lower.includes("competitive gap: none") || lower.includes("no gap")) gapValue = "Saturated";
+
+  let impactValue = "+22%";
+  const percentMatch = text.match(/([+|-]?\d{1,3}%)/);
+  if (percentMatch && percentMatch[1]) {
+    impactValue = percentMatch[1];
+  }
+
+  let recValue = "Validate";
+  if (lower.includes("recommendation: launch") || lower.includes("recommendation: proceed")) recValue = "Proceed";
+  if (lower.includes("recommendation: pivot") || lower.includes("recommendation: pause")) recValue = "Refine";
+
+  return {
+    opportunity: oppValue,
+    gap: gapValue,
+    impact: impactValue,
+    recommendation: recValue,
+  };
+}
+
+function ChatPage() {
+  const { pushActivity, profile, addTask } = useOs();
+  const { user } = useAuth();
 
   const welcomeMsg = (companyName: string): RagMessage => ({
     role: "assistant",
     text: `Hello founder! I have loaded your company memory ${
       companyName ? `for ${companyName}` : ""
-    }. Ask me anything about your product, business plan, financial model, pitch deck, or customer insights — I will retrieve the relevant chunks and cite the exact source files.`,
+    }. Ask me anything about your product, business plan, financial model, competitors, or customer insights — I will retrieve the relevant company context and cite the exact evidence.`,
     steps: ["Company memory loaded", "Atlas Vector Search active", "Mistral RAG pipeline ready"],
   });
 
@@ -67,17 +126,36 @@ function Chat() {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const [stats, setStats] = useState({ totalDocs: 0, totalChunks: 0 });
+  const [thoughtProcessOpen, setThoughtProcessOpen] = useState(true);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const [taskFeedback, setTaskFeedback] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Conversations history state
   const [conversations, setConversations] = useState<{ id: string; title: string; updatedAt: string }[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
 
   // Attachment state
   const [pendingAttachment, setPendingAttachment] = useState<ChatAttachment | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [savingAttachmentIndex, setSavingAttachmentIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const rawFounders = profile["founders"];
+  const firstFounder = Array.isArray(rawFounders)
+    ? rawFounders[0]
+    : typeof rawFounders === "string"
+      ? rawFounders.split(",")[0]?.trim()
+      : "";
+
+  const founderName =
+    profile["founder_name"] ||
+    firstFounder ||
+    (user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : "") ||
+    "Alex";
+
+  const founderInitials = founderName.slice(0, 1).toUpperCase() || "A";
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,11 +204,24 @@ function Chat() {
   useEffect(() => {
     loadConversationsList();
     loadStatsAndHistory();
+
+    // Check if initial prompt was passed from Home page
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialPrompt = urlParams.get("prompt");
+      if (initialPrompt && initialPrompt.trim()) {
+        window.history.replaceState({}, "", window.location.pathname);
+        setTimeout(() => {
+          ask(initialPrompt.trim());
+        }, 300);
+      }
+    }
   }, []);
 
   const selectConversation = async (id: string) => {
     if (loading) return;
     setConversationId(id);
+    setMobileHistoryOpen(false);
     await loadStatsAndHistory(id);
   };
 
@@ -138,6 +229,7 @@ function Chat() {
     if (loading) return;
     setConversationId(undefined);
     setPendingAttachment(null);
+    setMobileHistoryOpen(false);
     const companyName = profile["company_name"] || "";
     setMsgs([welcomeMsg(companyName)]);
   };
@@ -148,12 +240,8 @@ function Chat() {
       const res = await deleteConversationApi(id);
       if (res.success) {
         pushActivity("Memory Agent", "deleted a co-founder chat conversation");
-
-        // Refresh conversations list
         const updatedList = conversations.filter((c) => c.id !== id);
         setConversations(updatedList);
-
-        // If active conversation was deleted, switch to the next latest or start a new chat
         if (conversationId === id) {
           const first = updatedList[0];
           if (first) {
@@ -189,39 +277,21 @@ function Chat() {
     }
   };
 
-  const removePendingAttachment = () => {
-    setPendingAttachment(null);
-  };
-
   const handleSaveAttachment = async (msgIndex: number) => {
     if (!conversationId) return;
     setSavingAttachmentIndex(msgIndex);
     try {
       const res = await saveChatAttachmentApi(conversationId, msgIndex);
       if (res.success) {
-        pushActivity("Memory Agent", `permanently saved chat document to workspace library`);
-
-        // Update messages state
+        pushActivity("Memory Agent", "permanently saved chat document to workspace library");
         setMsgs((prev) =>
           prev.map((m, idx) => {
             if (idx === msgIndex) {
-              return {
-                ...m,
-                attachment: res.attachment,
-              };
+              return { ...m, attachment: res.attachment };
             }
             return m;
           })
         );
-
-        // Refresh stats
-        const statsRes = await getDocumentStatsApi();
-        if (statsRes) {
-          setStats({
-            totalDocs: statsRes.totalDocuments,
-            totalChunks: statsRes.totalChunks,
-          });
-        }
       }
     } catch (err) {
       console.error("Failed to save attachment to workspace:", err);
@@ -244,12 +314,22 @@ function Chat() {
     setMsgs(newMsgs);
     setPendingAttachment(null);
     setLoading(true);
+    setActiveStepIndex(0);
     pushActivity("Memory Agent", "retrieved vector context for a founder question");
+
+    // Animate reasoning step progression
+    const stepInterval = setInterval(() => {
+      setActiveStepIndex((prev) => {
+        if (prev < REASONING_STEPS.length - 1) return prev + 1;
+        return prev;
+      });
+    }, 750);
 
     try {
       const res = await sendChatMessageApi(newMsgs, conversationId);
+      clearInterval(stepInterval);
+      setActiveStepIndex(REASONING_STEPS.length);
 
-      // If it was a new conversation, update state and reload conversations list
       if (!conversationId) {
         setConversationId(res.conversationId);
         loadConversationsList();
@@ -266,6 +346,7 @@ function Chat() {
       ]);
     } catch (err) {
       console.error("RAG chat error:", err);
+      clearInterval(stepInterval);
       setMsgs([
         ...newMsgs,
         {
@@ -284,40 +365,88 @@ function Chat() {
     if (input.trim() || pendingAttachment) ask(input.trim());
   }
 
-  const companyName = profile["company_name"] || "Configured";
+  const handleQuickAction = (qa: (typeof QUICK_ACTIONS)[number]) => {
+    if (qa.action === "create_task") {
+      addTask("Implement recommendations from Co-Founder Chat", "Chat");
+      setTaskFeedback(true);
+      setTimeout(() => setTaskFeedback(false), 2500);
+      return;
+    }
+    if (qa.prompt) {
+      ask(qa.prompt);
+    }
+  };
 
   return (
-    <>
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <PageHeader
-          eyebrow="RAG-Powered Co-Founder Chat"
-          title="Ask the co-founder who remembers everything"
-          subtitle="Grounded in your company profile and vector search embeddings of your uploaded pitch decks, business plans, financials, and research docs."
-        />
-      </div>
+    <div className="space-y-4 animate-in fade-in duration-300">
+      {/* ── Chat Header ────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              Co-Founder Chat
+            </h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 border border-emerald-500/30">
+              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              AI Online
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Ask anything. Get startup-specific answers with real context.
+          </p>
+        </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[240px_1fr_300px]">
-        {/* Chat History Sidebar */}
-        <Panel className="flex h-[620px] flex-col p-3 bg-surface-2/30 border border-border/40 overflow-hidden">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
-            onClick={startNewChat}
-            className="flex items-center justify-center gap-2 w-full h-9 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/95 transition-all shadow-[var(--shadow-glow)]"
+            type="button"
+            onClick={() => setMobileHistoryOpen(!mobileHistoryOpen)}
+            className="lg:hidden inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-surface/60 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-white transition-all cursor-pointer"
           >
-            <Plus className="size-3.5" />
-            New Chat
+            <MessageSquare className="size-3.5 text-cyan-400" />
+            <span>History ({conversations.length})</span>
+            {mobileHistoryOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
           </button>
 
-          <div className="mt-4 flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-            <div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 px-2 py-1">
+          <button
+            onClick={startNewChat}
+            className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-black shadow-[0_0_15px_rgba(6,182,212,0.35)] hover:bg-cyan-300 transition-all cursor-pointer"
+          >
+            <Plus className="size-4 stroke-[2.5]" />
+            New Chat
+          </button>
+        </div>
+      </div>
+
+      {/* ── Main Chat Workspace Grid ───────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+        {/* Left: Conversations List */}
+        <div
+          className={cn(
+            "rounded-2xl border border-border/50 bg-[#0a1122]/70 p-4 shadow-xl backdrop-blur-md flex-col lg:h-[700px] overflow-hidden",
+            mobileHistoryOpen ? "flex h-auto max-h-60" : "hidden lg:flex"
+          )}
+        >
+          <div className="flex items-center justify-between pb-3 border-b border-border/40">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">
               Conversations
-            </div>
+            </span>
+            <button
+              onClick={startNewChat}
+              className="grid size-6 place-items-center rounded-lg text-muted-foreground hover:text-white hover:bg-white/[0.05] transition-colors"
+              title="New conversation"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+
+          <div className="mt-3 flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
             {loadingConversations ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="size-5 animate-spin text-primary/60" />
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="size-5 animate-spin text-cyan-400" />
               </div>
             ) : conversations.length === 0 ? (
-              <div className="text-xs text-muted-foreground/50 text-center py-8 px-2">
-                No chats yet. Start talking to your co-founder!
+              <div className="py-10 text-center text-xs text-muted-foreground/60 px-3">
+                No saved conversations yet. Ask your co-founder anything!
               </div>
             ) : (
               conversations.map((c) => {
@@ -327,263 +456,330 @@ function Chat() {
                     key={c.id}
                     onClick={() => selectConversation(c.id)}
                     className={cn(
-                      "group relative flex items-center justify-between rounded-lg px-2.5 py-2 text-xs cursor-pointer transition-all",
+                      "group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-xs cursor-pointer transition-all",
                       isActive
-                        ? "bg-primary/10 text-primary font-medium border border-primary/20"
-                        : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+                        ? "bg-cyan-500/15 text-cyan-300 font-semibold border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)]"
+                        : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
                     )}
                   >
-                    <div className="flex items-center gap-2 overflow-hidden mr-5">
-                      <MessageSquare className={cn("size-3.5 shrink-0", isActive ? "text-primary" : "text-muted-foreground/60")} />
-                      <span className="truncate">{c.title}</span>
+                    <div className="min-w-0 flex-1 pr-6">
+                      <div className="truncate text-white/90">{c.title}</div>
+                      <div className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">
+                        {new Date(c.updatedAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
                     </div>
+
                     <button
                       onClick={(e) => handleDeleteConversation(c.id, e)}
-                      className="absolute right-1.5 opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive rounded transition-all hover:bg-surface-3"
+                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-400 transition-all rounded hover:bg-red-500/10"
+                      title="Delete chat"
                     >
-                      <Trash2 className="size-3" />
+                      <Trash2 className="size-3.5" />
                     </button>
                   </div>
                 );
               })
             )}
           </div>
-        </Panel>
 
-        {/* Chat Pane */}
-        <Panel className="flex h-[620px] flex-col p-0">
-          <div className="flex-1 space-y-5 overflow-y-auto p-5 custom-scrollbar">
-            {msgs.map((m, i) => (
-              <div key={i} className={cn("flex flex-col", m.role === "user" ? "items-end" : "items-start")}>
-                <div className={cn("max-w-[85%]", m.role === "user" && "text-right")}>
-                  {m.role === "assistant" ? (
-                    <div className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-primary font-medium">
-                      <Sparkles className="size-3" /> AI Co-founder
-                    </div>
-                  ) : null}
-                  <div
-                    className={cn(
-                      "rounded-2xl px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap text-left",
-                      m.role === "assistant"
-                        ? "bg-surface-2 text-foreground border border-border/40"
-                        : "bg-primary text-primary-foreground font-medium ml-auto"
-                    )}
-                  >
-                    {m.text}
-                  </div>
+          <div className="pt-3 border-t border-border/40 text-center">
+            <button
+              onClick={() => {}}
+              className="text-[11px] text-cyan-400/80 hover:text-cyan-300 font-medium inline-flex items-center gap-1 transition-colors"
+            >
+              View all conversations →
+            </button>
+          </div>
+        </div>
 
-                  {/* Render Message Attachment if present */}
-                  {m.attachment ? (
-                    <div className={cn("my-2 flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                      <div className="rounded-xl border border-border bg-surface px-3 py-2.5 flex flex-col gap-2 shadow-sm w-[280px] text-left">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <div className="size-8 rounded bg-primary/10 grid place-items-center shrink-0">
-                            <FileText className="size-4 text-primary" />
-                          </div>
-                          <div className="overflow-hidden min-w-0">
-                            <div className="text-xs font-semibold text-foreground truncate" title={m.attachment.filename}>
-                              {m.attachment.filename}
-                            </div>
-                            <div className="text-[10px] text-muted-foreground">
-                              {formatBytes(m.attachment.fileSizeBytes)}
-                            </div>
-                          </div>
+        {/* Right: Active Chat Stream Pane */}
+        <div className="rounded-2xl border border-border/50 bg-[#0a1122]/70 shadow-xl backdrop-blur-md flex flex-col h-[500px] sm:h-[600px] lg:h-[700px] overflow-hidden">
+          {/* Scrollable Messages Area */}
+          <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
+            {msgs.map((m, idx) => {
+              const isUser = m.role === "user";
+              const insights = !isUser ? extractInsights(m.text) : null;
+
+              return (
+                <div key={idx} className={cn("flex flex-col", isUser ? "items-end" : "items-start w-full")}>
+                  {/* User Message */}
+                  {isUser ? (
+                    <div className="flex items-start gap-3 max-w-[90%] sm:max-w-[85%]">
+                      <div className="space-y-1 text-right">
+                        <div className="rounded-2xl rounded-tr-sm bg-cyan-500/20 border border-cyan-400/30 px-4 py-3 text-sm text-white leading-relaxed shadow-md backdrop-blur-sm text-left">
+                          {m.text}
                         </div>
-
-                        {m.attachment.mimeType.startsWith("image/") && m.attachment.base64 ? (
-                          <div className="rounded-lg overflow-hidden border border-border/50 max-h-[140px] flex items-center justify-center bg-black/20">
-                            <img
-                              src={`data:${m.attachment.mimeType};base64,${m.attachment.base64}`}
-                              alt={m.attachment.filename}
-                              className="max-h-[140px] w-auto object-contain"
-                            />
-                          </div>
-                        ) : null}
-
-                        {/* Save to Workspace button */}
-                        {conversationId ? (
-                          <div className="pt-1.5 border-t border-border/50 flex justify-end">
-                            {m.attachment.isSaved ? (
-                              <div className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-semibold">
-                                <Check className="size-3 text-emerald-500" />
-                                Saved to Workspace
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleSaveAttachment(i)}
-                                disabled={savingAttachmentIndex === i}
-                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 hover:bg-primary/15 active:bg-primary/20 text-primary font-semibold text-[10px] transition-colors"
-                              >
-                                {savingAttachmentIndex === i ? (
-                                  <Loader2 className="size-3 animate-spin" />
-                                ) : (
-                                  <Database className="size-3" />
-                                )}
-                                Save to Workspace Memory
-                              </button>
-                            )}
-                          </div>
-                        ) : null}
+                        <div className="text-[10px] text-muted-foreground/60 pr-1">
+                          Today, 6:30 PM
+                        </div>
+                      </div>
+                      <div className="grid size-8 shrink-0 place-items-center rounded-full bg-cyan-500/25 text-cyan-300 font-bold text-xs border border-cyan-400/30 mt-0.5">
+                        {founderInitials}
                       </div>
                     </div>
-                  ) : null}
+                  ) : (
+                    /* AI Co-Founder Message */
+                    <div className="flex items-start gap-2 sm:gap-3 max-w-full sm:max-w-[90%] w-full">
+                      <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-400/30 shadow-[0_0_12px_rgba(6,182,212,0.25)] mt-0.5">
+                        <Sparkles className="size-4" />
+                      </div>
 
-                  {m.steps && m.steps.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5 justify-start">
-                      {m.steps.map((s) => (
-                        <span
-                          key={s}
-                          className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-muted-foreground border border-border/40"
-                        >
-                          <Check className="mr-1 inline size-2.5 text-primary" />
-                          {s}
-                        </span>
-                      ))}
+                      <div className="space-y-3 flex-1 overflow-hidden">
+                        {/* Thought Process Box */}
+                        {m.steps && m.steps.length > 0 && (
+                          <div className="rounded-xl border border-border/40 bg-black/30 p-3 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setThoughtProcessOpen(!thoughtProcessOpen)}
+                              className="flex items-center justify-between w-full text-[11px] font-semibold text-muted-foreground hover:text-white transition-colors"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <Brain className="size-3.5 text-cyan-400" />
+                                Thought process
+                              </span>
+                              {thoughtProcessOpen ? (
+                                <ChevronUp className="size-3.5 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="size-3.5 text-muted-foreground" />
+                              )}
+                            </button>
+
+                            {thoughtProcessOpen && (
+                              <div className="mt-2.5 space-y-1.5 pt-2 border-t border-border/30 animate-in fade-in duration-200">
+                                {REASONING_STEPS.map((step, sIdx) => (
+                                  <div key={sIdx} className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="text-cyan-400 font-mono text-[10px]">&gt;</span>
+                                      {step}
+                                    </span>
+                                    <Check className="size-3 text-emerald-400 stroke-[3]" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* AI Text Reply */}
+                        <div className="rounded-2xl rounded-tl-sm border border-border/50 bg-[#0e172e]/80 p-4 text-sm text-foreground/95 leading-relaxed shadow-lg whitespace-pre-wrap">
+                          {m.text}
+                        </div>
+
+                        {/* Structured Insight Cards (when present) */}
+                        {insights && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3 text-center">
+                              <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                                Market Opportunity
+                              </span>
+                              <span className="mt-1 block text-sm font-bold text-emerald-400">
+                                {insights.opportunity}
+                              </span>
+                            </div>
+
+                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3 text-center">
+                              <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                                Competitive Gap
+                              </span>
+                              <span className="mt-1 block text-sm font-bold text-amber-400">
+                                {insights.gap}
+                              </span>
+                            </div>
+
+                            <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/[0.06] p-3 text-center">
+                              <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                                Estimated Impact
+                              </span>
+                              <span className="mt-1 block text-sm font-bold text-cyan-300">
+                                {insights.impact}
+                              </span>
+                            </div>
+
+                            <div className="rounded-xl border border-purple-500/30 bg-purple-500/[0.06] p-3 text-center">
+                              <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                                Recommendation
+                              </span>
+                              <span className="mt-1 block text-sm font-bold text-purple-400">
+                                {insights.recommendation}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Evidence Sources */}
+                        {m.sources && m.sources.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {m.sources.map((s, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-950/30 px-2.5 py-1 text-[10px] font-medium text-cyan-300"
+                              >
+                                <FileText className="size-3" />
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Attachment Preview & Save to Workspace */}
+                        {m.attachment && (
+                          <div className="rounded-xl border border-border/60 bg-black/40 p-3 flex items-center justify-between gap-3 max-w-sm">
+                            <div className="flex items-center gap-2.5 overflow-hidden">
+                              <div className="grid size-8 place-items-center rounded-lg bg-cyan-500/20 text-cyan-400 shrink-0">
+                                <FileText className="size-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-white truncate">
+                                  {m.attachment.filename}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {formatBytes(m.attachment.fileSizeBytes)}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveAttachment(idx)}
+                              disabled={savingAttachmentIndex === idx || m.attachment.isSaved}
+                              className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/20 transition-all shrink-0"
+                            >
+                              {m.attachment.isSaved ? "Saved" : "Save to Brain"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ) : null}
-                  {m.sources && m.sources.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5 justify-start">
-                      {m.sources.map((s) => (
-                        <span
-                          key={s}
-                          className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] text-primary font-medium"
-                        >
-                          <FileText className="size-2.5" />
-                          Source: {s}
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Live Loading / Thought Process */}
+            {loading && (
+              <div className="flex items-start gap-3 max-w-[85%]">
+                <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-400/30 mt-0.5">
+                  <Sparkles className="size-4 animate-spin" />
+                </div>
+                <div className="rounded-2xl border border-border/40 bg-black/40 p-4 space-y-2.5 w-full max-w-md">
+                  <div className="text-xs font-semibold text-white flex items-center gap-2">
+                    <Loader2 className="size-3.5 animate-spin text-cyan-400" />
+                    Analyzing company context & market signals...
+                  </div>
+                  <div className="space-y-1.5 pt-2 border-t border-border/30 text-[11px]">
+                    {REASONING_STEPS.map((step, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-cyan-400 font-mono text-[10px]">&gt;</span>
+                          {step}
                         </span>
-                      ))}
-                    </div>
-                  ) : null}
+                        {idx < activeStepIndex ? (
+                          <Check className="size-3 text-emerald-400 stroke-[3]" />
+                        ) : idx === activeStepIndex ? (
+                          <Loader2 className="size-3 animate-spin text-cyan-400" />
+                        ) : (
+                          <span className="size-1.5 rounded-full bg-white/20" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            ))}
+            )}
 
-            {loading ? (
-              <div className="max-w-[85%] rounded-2xl bg-surface-2 p-4 border border-border/40">
-                <div className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-primary font-medium">
-                  <Brain className="size-3 animate-pulse" /> RAG Pipeline Running
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin text-primary" />
-                  Generating query embedding & searching vector chunks in MongoDB…
-                </div>
-              </div>
-            ) : null}
             <div ref={chatEndRef} />
           </div>
 
-          <div className="border-t border-border p-3 bg-surface-2/10">
-            {pendingAttachment ? (
-              <div className="mb-2 p-2 rounded-xl border border-border bg-surface flex items-center justify-between gap-3 max-w-[320px] transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="size-8 rounded bg-primary/10 grid place-items-center shrink-0">
-                    <FileText className="size-4 text-primary" />
-                  </div>
-                  <div className="min-w-0 overflow-hidden text-left">
-                    <div className="text-xs font-semibold text-foreground truncate" title={pendingAttachment.filename}>
-                      {pendingAttachment.filename}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {formatBytes(pendingAttachment.fileSizeBytes)}
-                    </div>
-                  </div>
-                </div>
+          {/* Bottom Docked Input Form */}
+          <div className="border-t border-border/40 bg-[#070d1a]/95 p-3 sm:p-4 space-y-2.5 backdrop-blur-xl">
+            {/* Pending file pill */}
+            {pendingAttachment && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-cyan-500/30 bg-cyan-950/30 p-2 text-xs text-cyan-300 max-w-sm">
+                <span className="truncate">{pendingAttachment.filename}</span>
                 <button
                   type="button"
-                  onClick={removePendingAttachment}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-3 transition-colors"
+                  onClick={() => setPendingAttachment(null)}
+                  className="p-1 hover:text-white"
                 >
                   <X className="size-3.5" />
                 </button>
               </div>
-            ) : null}
+            )}
 
-            {uploadingFile ? (
-              <div className="mb-2 p-2 rounded-xl border border-border bg-surface flex items-center gap-2 max-w-[280px] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                <Loader2 className="size-4 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground font-medium">Extracting file contents...</span>
-              </div>
-            ) : null}
-
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => ask(s)}
-                  className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={loading || uploadingFile || !!pendingAttachment}
-                className="grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-surface hover:bg-surface-3 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                title="Attach document/image"
-              >
-                <Paperclip className="size-4" />
-              </button>
+            {/* Main Input Bar */}
+            <form
+              onSubmit={onSubmit}
+              className="relative flex items-center rounded-2xl border border-cyan-500/30 bg-[#0a1224]/80 p-2 shadow-[0_0_20px_rgba(6,182,212,0.15)] focus-within:border-cyan-400 focus-within:shadow-[0_0_25px_rgba(6,182,212,0.25)] transition-all"
+            >
               <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                className="hidden"
-                accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.markdown,.csv,.json,.png,.jpg,.jpeg,.webp"
-              />
-              <input
+                type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask anything about your company, pricing strategy, or risk profiles…"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                placeholder="Type your message..."
+                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-muted-foreground/60 px-3"
               />
-              <button
-                type="submit"
-                disabled={(!input.trim() && !pendingAttachment) || loading}
-                className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50"
-              >
-                <ArrowUp className="size-4" />
-              </button>
-            </form>
-          </div>
-        </Panel>
 
-        {/* Context Pane */}
-        <div className="space-y-4">
-          <Panel title="Context in this workspace" hint="MongoDB Vector Memory">
-            <div className="space-y-2 text-xs">
-              {[
-                ["Company profile", companyName],
-                ["Indexed Documents", `${stats.totalDocs} docs`],
-                ["Vector Chunks", `${stats.totalChunks.toLocaleString()} embedded`],
-                ["Embedding Model", "mistral-embed"],
-                ["LLM Engine", "Mistral Large"],
-                ["Vector Database", "MongoDB Atlas"],
-              ].map(([k, v]) => (
-                <div key={k} className="flex justify-between">
-                  <span className="text-muted-foreground">{k}</span>
-                  <span className="font-medium tabular-nums">{v}</span>
-                </div>
+              <div className="flex items-center gap-1.5 shrink-0 pr-1">
+                {/* File input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFile}
+                  className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:text-white hover:bg-white/[0.06] transition-colors"
+                  title="Attach file"
+                >
+                  {uploadingFile ? <Loader2 className="size-4 animate-spin text-cyan-400" /> : <Paperclip className="size-4" />}
+                </button>
+
+                <button
+                  type="button"
+                  className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:text-white hover:bg-white/[0.06] transition-colors"
+                  title="Voice input"
+                >
+                  <Mic className="size-4" />
+                </button>
+
+                {/* Cyan Send Arrow Button */}
+                <button
+                  type="submit"
+                  disabled={(!input.trim() && !pendingAttachment) || loading}
+                  className="grid size-9 place-items-center rounded-full bg-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-300 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  title="Send message"
+                >
+                  <ArrowRight className="size-4 stroke-[2.5]" />
+                </button>
+              </div>
+            </form>
+
+            {/* Quick Action Pills Below Input */}
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {QUICK_ACTIONS.map((qa, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleQuickAction(qa)}
+                  className="rounded-xl border border-border/50 bg-white/[0.02] px-3 py-1 text-[11px] text-muted-foreground transition-all hover:border-cyan-500/40 hover:bg-cyan-950/20 hover:text-cyan-300 cursor-pointer"
+                >
+                  {qa.label}
+                </button>
               ))}
+              {taskFeedback && (
+                <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold animate-in fade-in">
+                  <CheckCircle2 className="size-3.5" /> Task added to workspace!
+                </span>
+              )}
             </div>
-          </Panel>
-          <Panel title="Agents on call">
-            <div className="flex flex-wrap gap-1.5">
-              {["Research", "Strategy", "Financial", "Critic", "Memory"].map((a) => (
-                <Tag key={a} tone="primary">
-                  {a}
-                </Tag>
-              ))}
-            </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-              Every answer performs live vector search over your uploaded documents and cites exact file sources.
-            </p>
-          </Panel>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

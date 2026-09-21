@@ -558,9 +558,9 @@ function Page() {
         <Panel title="Founder profile">
           <div className="space-y-3.5 text-[13px]">
             {profileRows.map(([k, v]) => (
-              <div key={k} className="flex gap-4">
+              <div key={k} className="flex flex-col sm:flex-row sm:gap-4 gap-0.5">
                 <span className="w-36 shrink-0 text-xs text-muted-foreground">{k}</span>
-                <span className="text-foreground font-medium">{v}</span>
+                <span className="text-foreground font-medium break-words min-w-0">{v}</span>
               </div>
             ))}
           </div>
@@ -598,7 +598,7 @@ function Page() {
       </div>
 
       {/* Stats row */}
-      <div className="mb-5 grid grid-cols-3 gap-3">
+      <div className="mb-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { icon: BookOpen, label: "Total Documents", val: stats.totalDocs },
           { icon: Database, label: "Indexed", val: stats.indexed },

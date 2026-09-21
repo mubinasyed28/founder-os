@@ -55,6 +55,13 @@ type MistralChatResponse = {
   }[];
 };
 
+const CANDIDATE_MODELS = [
+  "mistral-small-latest",
+  "ministral-8b-latest",
+  "open-mistral-7b",
+  "ministral-3b-latest",
+];
+
 /**
  * Send a conversation to Mistral and get a text response.
  */
@@ -70,16 +77,25 @@ export async function chatCompletion(
     })),
   ];
 
-  const result = await postToMistral<MistralChatResponse>("/chat/completions", {
-    model: "mistral-large-latest",
-    messages: formattedMessages,
-  });
+  let lastErr: unknown = null;
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const result = await postToMistral<MistralChatResponse>("/chat/completions", {
+        model,
+        messages: formattedMessages,
+      });
 
-  const content = result.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("Mistral returned an empty response");
+      const content = result.choices[0]?.message?.content;
+      if (content) {
+        return content;
+      }
+    } catch (err) {
+      console.warn(`[mistral] Model ${model} failed in chatCompletion:`, err);
+      lastErr = err;
+    }
   }
-  return content;
+
+  throw lastErr || new Error("All Mistral candidate models failed");
 }
 
 /**
@@ -90,32 +106,37 @@ export async function chatCompletionJson<T = Record<string, unknown>>(
   userPrompt: string,
   responseSchema?: Record<string, unknown>,
 ): Promise<T> {
-  // Mistral supports response_format: { type: "json_object" }
-  // We include system prompt instructions to guide the schema extraction.
   const schemaInstruction = responseSchema 
     ? `\n\nYou MUST return ONLY valid JSON matching this schema: ${JSON.stringify(responseSchema)}`
     : "";
 
-  const result = await postToMistral<MistralChatResponse>("/chat/completions", {
-    model: "mistral-large-latest",
-    messages: [
-      { role: "system", content: systemPrompt + schemaInstruction },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: { type: "json_object" },
-  });
+  let lastErr: unknown = null;
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const result = await postToMistral<MistralChatResponse>("/chat/completions", {
+        model,
+        messages: [
+          { role: "system", content: systemPrompt + schemaInstruction },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+      });
 
-  const text = result.choices[0]?.message?.content?.trim();
-  if (!text) {
-    throw new Error("Mistral returned an empty response");
+      const text = result.choices[0]?.message?.content?.trim();
+      if (text) {
+        try {
+          return JSON.parse(text) as T;
+        } catch {
+          console.error(`[mistral] Failed to parse JSON from model ${model}:`, text);
+        }
+      }
+    } catch (err) {
+      console.warn(`[mistral] Model ${model} failed in chatCompletionJson:`, err);
+      lastErr = err;
+    }
   }
 
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    console.error("[mistral] Failed to parse structured JSON response:", text);
-    throw new Error("Mistral returned invalid JSON despite response_format constraint");
-  }
+  throw lastErr || new Error("All Mistral candidate models failed for structured JSON");
 }
 
 // ── Embedding Generation ─────────────────────────────────────────────

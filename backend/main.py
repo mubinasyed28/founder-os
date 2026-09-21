@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import init_db
-from backend.routers import auth, onboarding, documents, chat, health, competitors, opportunities, research
+from backend.routers import auth, onboarding, documents, chat, health, competitors, opportunities, research, ml_prediction, simulator
 from backend.startup_validator.routes import router as validator_router
+from backend.services.ml_service import get_ml_service
 
 
 app = FastAPI(
@@ -38,6 +39,12 @@ app.add_middleware(
 async def on_startup():
     print("[main] Starting FastAPI server & initializing MongoDB...")
     await init_db()
+    print("[main] Preloading ML models and encoders...")
+    try:
+        get_ml_service().load_models()
+        print("[main] ML models preloaded successfully.")
+    except Exception as e:
+        print(f"[main] Warning: ML service model preloading encountered an error: {e}")
 
 @app.api_route("/", methods=["GET", "HEAD"])
 async def root_endpoint():
@@ -62,6 +69,8 @@ app.include_router(opportunities.router)
 app.include_router(research.router)
 app.include_router(validator_router, prefix="/api/v1")
 app.include_router(validator_router, prefix="/api/validator")
+app.include_router(ml_prediction.router)
+app.include_router(simulator.router)
 
 
 if __name__ == "__main__":

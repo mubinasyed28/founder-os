@@ -1,0 +1,17 @@
+feature,importance
+did_customer_validation,0.147792
+monthly_burn_rate,0.11704218
+funding_path,0.0958301
+runway_months,0.08198781
+macro_climate,0.06677444
+team_completeness,0.058352154
+market_size_score,0.05784712
+competition_intensity,0.052524928
+domain_experience_years,0.04770944
+founder_prior_exits,0.047457878
+industry,0.047155637
+n_cofounders,0.037754864
+prior_failures,0.03616086
+age_of_founder,0.0359411
+technical_cofounder,0.034904774
+founding_year,0.034764733

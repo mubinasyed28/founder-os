@@ -426,3 +426,11 @@ export async function submitInsightFeedbackApi(
   });
 }
 
+// ── Decision Simulator Intelligence Endpoint ──────────────────────────
+export async function analyzeDecisionApi(companyId: string, decision: string): Promise<any> {
+  return apiRequest("/simulator/intelligence", {
+    method: "POST",
+    body: JSON.stringify({ company_id: companyId, decision }),
+  });
+}
+

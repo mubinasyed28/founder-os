@@ -145,7 +145,7 @@ function Onboarding() {
   const [profile, setProfile] = useState<ProfileState>(INITIAL_PROFILE);
   const [lastExtractedTime, setLastExtractedTime] = useState<string | null>(null);
 
-  // Structured response data from Gemini
+  // Structured response data from Mistral
   const [confidenceScore, setConfidenceScore] = useState(0);
   const [missingInformation, setMissingInformation] = useState<string[]>([]);
 

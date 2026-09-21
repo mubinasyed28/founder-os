@@ -15,7 +15,7 @@ function Page() {
         title="The numbers behind every score"
         subtitle="Seven months of actuals. These feed the health score, the forecast and every recommendation you see."
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Users" value="3,860" delta={27} />
         <StatCard label="MRR" value="₹2.1L" delta={14} />
         <StatCard label="D30 retention" value="24.8%" delta={-3} />

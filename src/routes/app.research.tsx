@@ -49,7 +49,7 @@ export const Route = createFileRoute("/app/research")({
 
 type TabType = "insights" | "evidence" | "entities" | "events";
 
-export function Page() {
+function Page() {
   const { pushActivity } = useOs();
 
   // Navigation State
@@ -330,10 +330,10 @@ export function Page() {
 
       {/* ── Navigation Tabs & Global Search ── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-3">
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-2 border border-border">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-2 border border-border max-w-full overflow-x-auto">
           <button
             onClick={() => setActiveTab("insights")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               activeTab === "insights"
                 ? "bg-surface text-foreground shadow-sm border border-border"
                 : "text-muted-foreground hover:text-foreground"
@@ -344,7 +344,7 @@ export function Page() {
           </button>
           <button
             onClick={() => setActiveTab("evidence")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               activeTab === "evidence"
                 ? "bg-surface text-foreground shadow-sm border border-border"
                 : "text-muted-foreground hover:text-foreground"
@@ -355,7 +355,7 @@ export function Page() {
           </button>
           <button
             onClick={() => setActiveTab("entities")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               activeTab === "entities"
                 ? "bg-surface text-foreground shadow-sm border border-border"
                 : "text-muted-foreground hover:text-foreground"
@@ -366,7 +366,7 @@ export function Page() {
           </button>
           <button
             onClick={() => setActiveTab("events")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               activeTab === "events"
                 ? "bg-surface text-foreground shadow-sm border border-border"
                 : "text-muted-foreground hover:text-foreground"

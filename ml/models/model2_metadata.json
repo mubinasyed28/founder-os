@@ -1,0 +1,61 @@
+{
+  "stage": "Stage 0 (Day 0 / Founding)",
+  "approved_features": [
+    "industry",
+    "founding_year",
+    "macro_climate",
+    "market_size_score",
+    "competition_intensity",
+    "founder_prior_exits",
+    "prior_failures",
+    "domain_experience_years",
+    "technical_cofounder",
+    "n_cofounders",
+    "team_completeness",
+    "age_of_founder",
+    "funding_path",
+    "monthly_burn_rate",
+    "runway_months",
+    "did_customer_validation"
+  ],
+  "categorical_features": [
+    "industry",
+    "funding_path"
+  ],
+  "excluded_columns": [
+    "startup_id",
+    "years_to_outcome",
+    "failure_reason",
+    "survived_5y",
+    "outcome",
+    "total_raised_usd",
+    "weekly_hours"
+  ],
+  "target": "failed",
+  "label_encoder_classes": {
+    "industry": [
+      "agriculture",
+      "biotech",
+      "consumer_app",
+      "ecommerce",
+      "fintech",
+      "food_bev",
+      "hardware",
+      "healthtech",
+      "marketplace",
+      "services",
+      "tech_saas"
+    ],
+    "funding_path": [
+      "angel",
+      "bootstrapped",
+      "vc_seed",
+      "vc_series_a_plus"
+    ]
+  },
+  "train_n": 38400,
+  "test_n": 9600,
+  "train_failure_rate": 0.6580729166666667,
+  "test_failure_rate": 0.6580208333333334,
+  "data_nature": "SYNTHETIC (procedurally generated, calibrated to BLS/CBI statistics)"
+}

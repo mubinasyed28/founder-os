@@ -1,0 +1,80 @@
+{
+  "approved_features": [
+    "industry",
+    "country",
+    "referral_source",
+    "account_plan_tier",
+    "tenure_months",
+    "calendar_month",
+    "current_mrr",
+    "active_subscriptions",
+    "total_seats",
+    "usage_count",
+    "usage_duration_secs",
+    "error_count",
+    "n_unique_features",
+    "has_beta_feature",
+    "n_tickets",
+    "avg_resolution_hours",
+    "n_escalations",
+    "had_churn_in_m"
+  ],
+  "categorical_features": [
+    "industry",
+    "country",
+    "referral_source",
+    "account_plan_tier"
+  ],
+  "numerical_features": [
+    "tenure_months",
+    "calendar_month",
+    "current_mrr",
+    "active_subscriptions",
+    "total_seats",
+    "usage_count",
+    "usage_duration_secs",
+    "error_count",
+    "n_unique_features",
+    "has_beta_feature",
+    "n_tickets",
+    "avg_resolution_hours",
+    "n_escalations",
+    "had_churn_in_m"
+  ],
+  "label_encoder_classes": {
+    "industry": [
+      "Cybersecurity",
+      "DevTools",
+      "EdTech",
+      "FinTech",
+      "HealthTech"
+    ],
+    "country": [
+      "AU",
+      "CA",
+      "DE",
+      "FR",
+      "IN",
+      "UK",
+      "US"
+    ],
+    "referral_source": [
+      "ads",
+      "event",
+      "organic",
+      "other",
+      "partner"
+    ],
+    "account_plan_tier": [
+      "Basic",
+      "Enterprise",
+      "Pro"
+    ]
+  },
+  "train_period": "2023-01 to 2024-06",
+  "test_period": "2024-07 to 2024-12",
+  "regression_train_n": 2549,
+  "regression_test_n": 2070,
+  "classification_train_n": 3184,
+  "classification_test_n": 2123
+}

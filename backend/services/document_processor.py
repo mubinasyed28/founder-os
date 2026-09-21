@@ -222,6 +222,96 @@ def generate_embedding(text: str) -> List[float]:
         # Return a zero vector fallback
         return [0.0] * 1024
 
+def generate_document_summary_and_topics(text: str, filename: str) -> Tuple[str, List[str]]:
+    """
+    Generates a concise, factual summary (1-3 sentences) and extracts 4-8 meaningful
+    topics/entities strictly from actual document content. Does NOT hallucinate.
+    """
+    cleaned_text = (text or "").strip()
+    if not cleaned_text or cleaned_text.startswith("[Document:"):
+        base_name = filename.rsplit(".", 1)[0].replace("-", " ").replace("_", " ")
+        return f"Document uploaded under filename {filename} without readable text.", [base_name.lower()]
+
+    # 1. Attempt LLM-based factual summary if Mistral API key is available
+    apiKey = getattr(settings, "MISTRAL_API_KEY", "")
+    if apiKey:
+        try:
+            prompt = (
+                f"You are analyzing an uploaded startup document named '{filename}'.\n"
+                f"Document text excerpt (up to 4000 characters):\n{cleaned_text[:4000]}\n\n"
+                "Tasks:\n"
+                "1. Generate a concise, factual summary of approximately 1-3 sentences describing what the document actually contains. "
+                "Do NOT hallucinate, assume, or invent details not present in the excerpt.\n"
+                "2. Extract a small set of 4-8 meaningful, specific topics or domain entities from the text (do not use arbitrary generic keywords).\n\n"
+                "Return JSON ONLY:\n"
+                "{\n"
+                '  "summary": "1-3 factual sentences...",\n'
+                '  "topics": ["topic1", "topic2", ...]\n'
+                "}"
+            )
+            candidate_models = ["mistral-small-latest", "ministral-8b-latest", "open-mistral-7b", "ministral-3b-latest"]
+            for model_name in candidate_models:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": "You are a precise document analyzer. Output valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "max_tokens": 1200
+                }
+                req = urllib.request.Request(
+                    "https://api.mistral.ai/v1/chat/completions",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {apiKey}"},
+                    method="POST"
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=30) as response:
+                        resp_json = json.loads(response.read().decode("utf-8"))
+                        content = resp_json["choices"][0]["message"]["content"]
+                        parsed = json.loads(content)
+                        summary = (parsed.get("summary") or "").strip()
+                        topics = [str(t).strip() for t in parsed.get("topics", []) if str(t).strip()]
+                        if summary and len(topics) >= 1:
+                            return summary, topics[:8]
+                except Exception as ex:
+                    logger.debug(f"[document_processor] Model {model_name} failed: {ex}")
+                    continue
+        except Exception as e:
+            logger.info(f"[document_processor] Mistral summary generation fallback ({e})")
+
+    # 2. Deterministic, factual text-based extraction fallback (guarantees zero hallucination)
+    topics: List[str] = []
+    try:
+        from backend.startup_validator.nlp.tfidf import extract_tfidf_keywords
+        tfidf_res = extract_tfidf_keywords(cleaned_text, top_k=8)
+        topics = [term for term, _ in tfidf_res if len(term) > 2][:8]
+    except Exception:
+        pass
+
+    if not topics:
+        words = [w.strip(".,;:!?()[]\"'").lower() for w in cleaned_text.split() if len(w) > 3]
+        from collections import Counter
+        counts = Counter(words)
+        common_stop = {"with", "this", "that", "from", "have", "were", "been", "will", "what", "their", "there", "about", "which", "would"}
+        topics = [w for w, _ in counts.most_common(12) if w not in common_stop][:6]
+
+    # Build 1-3 factual sentences from the actual content
+    import re
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', cleaned_text) if len(s.strip()) > 20]
+    if sentences:
+        chosen_sentences = sentences[:2]
+        summary = " ".join(chosen_sentences)
+        if len(summary) > 350:
+            summary = summary[:347].rsplit(" ", 1)[0] + "..."
+    else:
+        topic_str = ", ".join(topics[:4]) if topics else filename
+        summary = f"Uploaded document '{filename}' containing content on {topic_str}."
+
+    return summary, topics
+
+
 async def process_and_index_document(
     user_id: str,
     file_bytes: bytes,
@@ -239,12 +329,15 @@ async def process_and_index_document(
     doc_record = {
         "_id": ObjectId(doc_id),
         "user_id": user_id,
+        "company_id": user_id,
         "filename": filename,
         "mimeType": mime_type,
         "fileSizeBytes": len(file_bytes),
         "chunkCount": 0,
         "status": "processing",
-        "uploadedAt": datetime.utcnow()
+        "uploadedAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+        "source": "upload"
     }
     await db.documents.insert_one(doc_record)
     
@@ -255,10 +348,13 @@ async def process_and_index_document(
         # 3. Classify if category not explicitly provided
         doc_category = category if category else classify_document(filename, text)
         
-        # 4. Chunk text
+        # 4. Generate factual short summary and topics
+        summary, topics = generate_document_summary_and_topics(text, filename)
+
+        # 5. Chunk text
         chunks = chunk_text(text, settings.CHUNK_SIZE, settings.CHUNK_OVERLAP)
         
-        # 5. Embed chunks and save
+        # 6. Embed chunks and save
         stored_chunks = 0
         for idx, chunk in enumerate(chunks):
             embedding = generate_embedding(chunk)
@@ -266,29 +362,36 @@ async def process_and_index_document(
             await db.chunks.insert_one({
                 "document_id": doc_id,
                 "user_id": user_id,
+                "company_id": user_id,
                 "text": chunk,
                 "embedding": embedding,
                 "chunkIndex": idx,
                 "metadata": {
                     "filename": filename,
-                    "category": doc_category
+                    "category": doc_category,
+                    "document_type": doc_category
                 },
                 "createdAt": datetime.utcnow()
             })
             stored_chunks += 1
             
-        # 6. Update document record to "indexed"
+        # 7. Update document record to "indexed" with complete metadata
         await db.documents.update_one(
             {"_id": ObjectId(doc_id)},
             {"$set": {
                 "status": "indexed",
                 "chunkCount": stored_chunks,
                 "category": doc_category,
+                "document_type": doc_category,
+                "company_id": user_id,
+                "short_summary": summary,
+                "document_topics": topics,
+                "updatedAt": datetime.utcnow(),
                 "processedAt": datetime.utcnow()
             }}
         )
         
-        # 7. Add document name to profile uploaded_documents array
+        # 8. Add document name to profile uploaded_documents array
         profile = await db.profiles.find_one({"user_id": user_id})
         if profile:
             uploaded_docs = profile.get("uploaded_documents", [])
@@ -303,6 +406,9 @@ async def process_and_index_document(
             "id": doc_id,
             "filename": filename,
             "category": doc_category,
+            "document_type": doc_category,
+            "short_summary": summary,
+            "document_topics": topics,
             "chunkCount": stored_chunks,
             "status": "indexed"
         }
@@ -318,6 +424,71 @@ async def process_and_index_document(
             }}
         )
         raise ValueError(f"Document processing failed: {err_detail}")
+
+
+async def backfill_missing_document_summaries(company_id: Optional[str] = None) -> int:
+    """
+    Safe backfill mechanism:
+    Identifies existing documents missing short_summary or document_topics,
+    reuses existing extracted text from chunks, generates summary/topics, and persists metadata.
+    Does NOT delete, duplicate, or re-upload any documents or chunks.
+    """
+    db = await get_db()
+    missing_criteria = {
+        "$or": [
+            {"short_summary": {"$exists": False}},
+            {"short_summary": None},
+            {"short_summary": ""},
+            {"document_topics": {"$exists": False}},
+            {"document_topics": None},
+            {"document_topics": []}
+        ]
+    }
+    
+    if company_id:
+        query = {
+            "$and": [
+                {"$or": [{"company_id": company_id}, {"user_id": company_id}]},
+                missing_criteria
+            ]
+        }
+    else:
+        query = missing_criteria
+
+    cursor = db.documents.find(query)
+    docs = await cursor.to_list(length=500)
+    updated_count = 0
+
+    for doc in docs:
+        doc_id_str = str(doc["_id"])
+        chunks_cursor = db.chunks.find({"document_id": doc_id_str}).sort("chunkIndex", 1)
+        chunks = await chunks_cursor.to_list(length=100)
+        
+        extracted_text = ""
+        if chunks:
+            extracted_text = "\n\n".join(c.get("text", "") for c in chunks if c.get("text"))
+        
+        if not extracted_text:
+            extracted_text = doc.get("filename", "")
+
+        summary, topics = generate_document_summary_and_topics(extracted_text, doc.get("filename", "Document"))
+        
+        update_fields: Dict[str, Any] = {
+            "short_summary": summary,
+            "document_topics": topics,
+            "company_id": doc.get("company_id") or doc.get("user_id"),
+            "document_type": doc.get("document_type") or doc.get("category", "other"),
+        }
+        if not doc.get("updatedAt"):
+            update_fields["updatedAt"] = doc.get("uploadedAt") or datetime.utcnow()
+
+        await db.documents.update_one(
+            {"_id": doc["_id"]},
+            {"$set": update_fields}
+        )
+        updated_count += 1
+
+    return updated_count
 
 async def delete_document_and_chunks(user_id: str, doc_id: str) -> bool:
     """Deletes a document record, all its chunks, and updates the profile's uploaded doc list."""

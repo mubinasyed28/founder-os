@@ -112,7 +112,7 @@ Priority: 1 = highest, 5 = lowest."""
 
     try:
         def call_mistral():
-            for model_name in ["open-mistral-7b", "mistral-small-latest", "mistral-large-latest"]:
+            for model_name in ["mistral-small-latest", "ministral-8b-latest", "open-mistral-7b", "ministral-3b-latest"]:
                 try:
                     payload = {
                         "model": model_name,
@@ -122,6 +122,7 @@ Priority: 1 = highest, 5 = lowest."""
                         ],
                         "response_format": {"type": "json_object"},
                         "temperature": 0.3,
+                        "max_tokens": 1200,
                     }
                     headers = {
                         "Content-Type": "application/json",
@@ -133,7 +134,7 @@ Priority: 1 = highest, 5 = lowest."""
                         headers=headers,
                         method="POST",
                     )
-                    with urllib.request.urlopen(req, timeout=30) as response:
+                    with urllib.request.urlopen(req, timeout=35) as response:
                         resp_data = response.read().decode("utf-8")
                         resp_json = json.loads(resp_data)
                         content = resp_json["choices"][0]["message"]["content"]
@@ -141,10 +142,11 @@ Priority: 1 = highest, 5 = lowest."""
                         if isinstance(parsed, dict) and "queries" in parsed:
                             return parsed
                 except urllib.error.HTTPError as he:
-                    if he.code in [403, 404, 422]:
-                        logger.info(f"[planner] Model {model_name} unavailable ({he.code}), trying next model")
-                        continue
-                    raise he
+                    logger.info(f"[planner] Model {model_name} HTTP error ({he.code}), trying next model")
+                    continue
+                except Exception as ex:
+                    logger.warning(f"[planner] Model {model_name} failed: {ex}")
+                    continue
             return None
 
         result = await asyncio.to_thread(call_mistral)

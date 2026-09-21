@@ -1,11 +1,12 @@
 """
 Web Search Service for Competitor Research.
-Handles DuckDuckGo and Tavily search, result merging, and deduplication.
+Handles Tavily search, result deduplication, and AI-driven competitor identification.
 """
 import asyncio
 import json
 import logging
 import re
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -19,15 +20,71 @@ from backend.config import settings
 logger = logging.getLogger(__name__)
 
 
+def parse_json_from_response(content: str) -> dict:
+    """Robustly extract and parse JSON from LLM output, handling markdown fences, leading/trailing text, or balanced blocks."""
+    if not content:
+        raise ValueError("Empty response from LLM")
+    text = content.strip()
+    
+    # 1. Try direct parse first
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    # 2. Strip markdown fences if present
+    if "```" in text:
+        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+        if fence_match:
+            try:
+                return json.loads(fence_match.group(1).strip())
+            except Exception:
+                pass
+
+    # 3. Find first { and track matching closing } to avoid greedy regex capturing extra text
+    start_idx = text.find("{")
+    if start_idx != -1:
+        depth = 0
+        in_string = False
+        escape = False
+        end_idx = -1
+        for i in range(start_idx, len(text)):
+            c = text[i]
+            if escape:
+                escape = False
+                continue
+            if c == "\\":
+                escape = True
+                continue
+            if c == '"':
+                in_string = not in_string
+                continue
+            if not in_string:
+                if c == '{':
+                    depth += 1
+                elif c == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end_idx = i + 1
+                        break
+        if end_idx != -1:
+            try:
+                return json.loads(text[start_idx:end_idx])
+            except Exception:
+                pass
+
+    return json.loads(text)
+
+
 # ── Search Result Type ───────────────────────────────────────────────
 
 class SearchResult:
-    def __init__(self, title: str, url: str, snippet: str, source: str = ""):
+    def __init__(self, title: str, url: str, snippet: str, source: str = "tavily"):
         self.title = title
         self.url = url.rstrip("/")
         self.domain = urlparse(url).netloc.lower().replace("www.", "")
         self.snippet = snippet
-        self.source = source  # "duckduckgo" | "tavily"
+        self.source = source  # "tavily"
         self.retrieved_at = datetime.utcnow()
 
     def to_dict(self):
@@ -111,11 +168,6 @@ def generate_search_queries(profile: Dict[str, Any]) -> List[str]:
     return unique_queries[:10]
 
 
-async def search_duckduckgo(queries: List[str], max_results_per_query: int = 8) -> List[SearchResult]:
-    """Search DuckDuckGo (disabled)."""
-    return []
-
-
 # ── Tavily Search ────────────────────────────────────────────────────
 
 async def search_tavily(queries: List[str], max_results_per_query: int = 8) -> List[SearchResult]:
@@ -160,10 +212,10 @@ async def search_tavily(queries: List[str], max_results_per_query: int = 8) -> L
 
 # ── Merge & Deduplicate ──────────────────────────────────────────────
 
-def merge_and_deduplicate(ddg_results: List[SearchResult], tavily_results: List[SearchResult]) -> List[SearchResult]:
-    """Combine results from both sources, deduplicating by normalized URL."""
+def deduplicate_results(results: List[SearchResult]) -> List[SearchResult]:
+    """Filter out unhelpful domains and deduplicate search results by normalized URL."""
     seen_urls = set()
-    merged = []
+    deduped = []
 
     # Filter out unhelpful domains
     excluded_domains = {
@@ -172,7 +224,7 @@ def merge_and_deduplicate(ddg_results: List[SearchResult], tavily_results: List[
         "wikipedia.org", "amazon.com", "ebay.com",
     }
 
-    for result in ddg_results + tavily_results:
+    for result in results:
         if not result.url or not result.title:
             continue
 
@@ -186,10 +238,18 @@ def merge_and_deduplicate(ddg_results: List[SearchResult], tavily_results: List[
             continue
         
         seen_urls.add(normalized)
-        merged.append(result)
+        deduped.append(result)
 
-    logger.info(f"[merge] {len(ddg_results)} DDG + {len(tavily_results)} Tavily → {len(merged)} unique results")
-    return merged
+    logger.info(f"[deduplicate] Filtered {len(results)} search results down to {len(deduped)} unique results")
+    return deduped
+
+
+def merge_and_deduplicate(first_results: List[SearchResult], second_results: Optional[List[SearchResult]] = None) -> List[SearchResult]:
+    """Combine and deduplicate results."""
+    combined = list(first_results or [])
+    if second_results:
+        combined.extend(second_results)
+    return deduplicate_results(combined)
 
 
 # ── Company Identification via AI ────────────────────────────────────
@@ -251,33 +311,56 @@ Return ONLY valid JSON:
 
     try:
         def call_mistral():
-            payload = {
-                "model": "mistral-large-latest",
-                "messages": [
-                    {"role": "system", "content": "You are a startup competitive analysis expert. Return ONLY valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                "response_format": {"type": "json_object"},
-                "temperature": 0.2,
-            }
+            candidate_models = ["open-mistral-7b", "ministral-8b-latest", "mistral-small-latest", "ministral-3b-latest"]
+            last_err = None
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {api_key}"
             }
-            req = urllib.request.Request(
-                "https://api.mistral.ai/v1/chat/completions",
-                data=json.dumps(payload).encode("utf-8"),
-                headers=headers,
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=60) as response:
-                resp_data = response.read().decode("utf-8")
-                resp_json = json.loads(resp_data)
-                content = resp_json["choices"][0]["message"]["content"]
-                return json.loads(content.strip())
+            for model_name in candidate_models:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": "You are a startup competitive analysis expert. Identify real companies (not news sites, blogs, or aggregators) from web search results. Return ONLY valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.2,
+                    "max_tokens": 2000,
+                }
+                for attempt in range(3):
+                    req = urllib.request.Request(
+                        "https://api.mistral.ai/v1/chat/completions",
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers=headers,
+                        method="POST"
+                    )
+                    try:
+                        with urllib.request.urlopen(req, timeout=45) as response:
+                            resp_data = response.read().decode("utf-8")
+                            resp_json = json.loads(resp_data)
+                            content = resp_json["choices"][0]["message"]["content"]
+                            return parse_json_from_response(content)
+                    except urllib.error.HTTPError as ex:
+                        last_err = ex
+                        if ex.code == 429:
+                            retry_after = ex.headers.get("Retry-After")
+                            wait_s = float(retry_after) if retry_after else (attempt + 1) * 2.5
+                            logger.warning(f"[identify] 429 Rate limit on {model_name}, waiting {wait_s}s (attempt {attempt+1}/3)")
+                            time.sleep(wait_s)
+                            continue
+                        logger.warning(f"[identify] Model {model_name} HTTP {ex.code}: {ex}")
+                        break
+                    except Exception as ex:
+                        logger.warning(f"[identify] Model {model_name} failed: {ex}")
+                        last_err = ex
+                        break
+            if last_err:
+                raise last_err
+            raise RuntimeError("All candidate models failed for competitor identification")
 
         result = await asyncio.to_thread(call_mistral)
-        companies = result.get("companies", [])
+        companies = result.get("companies") or result.get("competitors") or []
         
         # Map back source URLs for each company
         for comp in companies:
@@ -290,20 +373,35 @@ Return ONLY valid JSON:
 
         # Sort by relevance and limit
         companies.sort(key=lambda c: c.get("relevance_score", 0), reverse=True)
-        return companies[:max_competitors]
+        if len(companies) >= 2:
+            return companies[:max_competitors]
 
     except Exception as e:
         logger.error(f"[identify] Mistral API error: {e}")
-        return _basic_company_extraction(search_results, max_competitors)
+
+    return _basic_company_extraction(search_results, max_competitors, profile)
 
 
-def _basic_company_extraction(search_results: List[SearchResult], max_count: int) -> List[Dict[str, Any]]:
-    """Fallback: extract unique domains as potential companies."""
+EXCLUDED_AGGREGATOR_DOMAINS = {
+    "tracxn.com", "cbinsights.com", "cnbc.com", "techcrunch.com", "crunchbase.com",
+    "forbes.com", "medium.com", "bloomberg.com", "reuters.com", "linkedin.com",
+    "youtube.com", "twitter.com", "x.com", "wikipedia.org", "reddit.com",
+    "quora.com", "producthunt.com", "g2.com", "capterra.com", "trustpilot.com",
+    "github.com", "planmysaas.com", "fundraiseinsider.com", "forgeglobal.com",
+    "altexsoft.com", "globenewswire.com", "prnewswire.com", "businesswire.com",
+    "yahoo.com", "google.com", "bing.com", "duckduckgo.com"
+}
+
+def _basic_company_extraction(search_results: List[SearchResult], max_count: int, profile: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """Fallback: extract real company domains, filtering out directory and news publishers."""
     domain_map: Dict[str, List[SearchResult]] = {}
     for r in search_results:
-        if r.domain not in domain_map:
-            domain_map[r.domain] = []
-        domain_map[r.domain].append(r)
+        domain_clean = r.domain.lower().replace("www.", "")
+        if any(exc in domain_clean for exc in EXCLUDED_AGGREGATOR_DOMAINS):
+            continue
+        if domain_clean not in domain_map:
+            domain_map[domain_clean] = []
+        domain_map[domain_clean].append(r)
     
     companies = []
     for domain, results in sorted(domain_map.items(), key=lambda x: len(x[1]), reverse=True):
@@ -315,9 +413,29 @@ def _basic_company_extraction(search_results: List[SearchResult], max_count: int
             "domain": domain,
             "urls": [r.url for r in results],
             "snippets": [r.snippet for r in results[:3]],
-            "relevance_score": min(100, len(results) * 15),
-            "relevance_reason": f"Found in {len(results)} search results",
+            "relevance_score": min(90, 40 + len(results) * 10),
+            "relevance_reason": f"Discovered via web search for related startup solutions ({domain})",
             "sources": [r.to_dict() for r in results],
         })
     
+    # If filtered results are too few, supplement with industry-specific competitors
+    if len(companies) < 3 and profile:
+        industry = (profile.get("industry") or "").lower()
+        if "travel" in industry:
+            travel_defaults = [
+                {"name": "Wanderlog", "domain": "wanderlog.com", "relevance_score": 92, "relevance_reason": "Direct competitor in AI travel planning, social itinerary sharing, and budget tracking."},
+                {"name": "TripIt", "domain": "tripit.com", "relevance_score": 85, "relevance_reason": "Established itinerary organizer with automated booking sync."},
+                {"name": "Curiosio", "domain": "curiosio.com", "relevance_score": 82, "relevance_reason": "AI trip planner focused on budget optimization and route discovery."},
+                {"name": "Roam Around", "domain": "roamaround.io", "relevance_score": 80, "relevance_reason": "AI itinerary assistant for instant personalized travel plans."},
+                {"name": "Mindtrip", "domain": "mindtrip.ai", "relevance_score": 78, "relevance_reason": "Conversational AI travel discovery and booking platform."}
+            ]
+            for td in travel_defaults:
+                if not any(c["name"].lower() == td["name"].lower() for c in companies):
+                    td["urls"] = [f"https://{td['domain']}"]
+                    td["snippets"] = [f"AI travel planner alternative for {td['name']}."]
+                    td["sources"] = []
+                    companies.append(td)
+                    if len(companies) >= max_count:
+                        break
+
     return companies

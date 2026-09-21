@@ -197,40 +197,62 @@ async def process_conversational_turn(
 
             # Define the call to Mistral API
             def call_mistral():
-                payload = {
-                    "model": "mistral-large-latest",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": YC_PARTNER_SYSTEM_PROMPT + f"\n\nYou MUST return ONLY valid JSON matching this schema:\n{json.dumps(ONBOARDING_RESPONSE_SCHEMA, indent=2)}"
-                        },
-                        {
-                            "role": "user",
-                            "content": full_prompt
-                        }
-                    ],
-                    "response_format": {
-                        "type": "json_object"
-                    }
-                }
-                
+                candidate_models = ["open-mistral-7b", "ministral-8b-latest", "mistral-small-latest", "ministral-3b-latest"]
+                last_err = None
                 headers = {
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {apiKey}"
                 }
-                
-                req = urllib.request.Request(
-                    "https://api.mistral.ai/v1/chat/completions",
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers=headers,
-                    method="POST"
-                )
-                
-                with urllib.request.urlopen(req, timeout=30) as response:
-                    resp_data = response.read().decode("utf-8")
-                    resp_json = json.loads(resp_data)
-                    content = resp_json["choices"][0]["message"]["content"]
-                    return json.loads(content.strip())
+                for model_name in candidate_models:
+                    payload = {
+                        "model": model_name,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": YC_PARTNER_SYSTEM_PROMPT + f"\n\nYou MUST return ONLY valid JSON matching this schema:\n{json.dumps(ONBOARDING_RESPONSE_SCHEMA, indent=2)}"
+                            },
+                            {
+                                "role": "user",
+                                "content": full_prompt
+                            }
+                        ],
+                        "response_format": {
+                            "type": "json_object"
+                        },
+                        "max_tokens": 1500
+                    }
+                    for attempt in range(3):
+                        req = urllib.request.Request(
+                            "https://api.mistral.ai/v1/chat/completions",
+                            data=json.dumps(payload).encode("utf-8"),
+                            headers=headers,
+                            method="POST"
+                        )
+                        try:
+                            with urllib.request.urlopen(req, timeout=45) as response:
+                                resp_data = response.read().decode("utf-8")
+                                resp_json = json.loads(resp_data)
+                                content = resp_json["choices"][0]["message"]["content"]
+                                from backend.services.web_search_service import parse_json_from_response
+                                return parse_json_from_response(content)
+                        except urllib.error.HTTPError as ex:
+                            last_err = ex
+                            if ex.code == 429:
+                                import time
+                                retry_after = ex.headers.get("Retry-After")
+                                wait_s = float(retry_after) if retry_after else (attempt + 1) * 2.0
+                                logger.warning(f"[onboarding] 429 Rate limit on {model_name}, waiting {wait_s}s (attempt {attempt+1}/3)")
+                                time.sleep(wait_s)
+                                continue
+                            logger.warning(f"[onboarding] Model {model_name} HTTP {ex.code}: {ex}")
+                            break
+                        except Exception as e:
+                            logger.warning(f"[onboarding] Model {model_name} failed: {e}")
+                            last_err = e
+                            break
+                if last_err:
+                    raise last_err
+                raise RuntimeError("All Mistral onboarding candidate models failed")
 
             # Execute the synchronous HTTP call in a thread pool to avoid blocking the event loop
             parsed = await asyncio.to_thread(call_mistral)

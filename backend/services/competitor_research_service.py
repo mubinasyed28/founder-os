@@ -12,7 +12,6 @@ from backend.database import get_db
 from backend.models import CompetitorResearchResult
 from backend.services.web_search_service import (
     generate_search_queries,
-    search_duckduckgo,
     search_tavily,
     merge_and_deduplicate,
     identify_and_rank_companies,
@@ -104,15 +103,13 @@ async def run_research_pipeline(user_id: str, research_id: str, profile: Dict[st
         if not queries:
             raise ValueError("Could not generate search queries from company profile. Make sure profile is populated.")
 
-        # 2. Run searches in parallel
-        ddg_task = search_duckduckgo(queries)
-        tavily_task = search_tavily(queries)
-        ddg_results, tavily_results = await asyncio.gather(ddg_task, tavily_task)
+        # 2. Run Tavily search
+        tavily_results = await search_tavily(queries)
 
-        # 3. Merge & Deduplicate
-        merged_results = merge_and_deduplicate(ddg_results, tavily_results)
+        # 3. Deduplicate
+        merged_results = merge_and_deduplicate(tavily_results)
         if not merged_results:
-            raise ValueError("No search results returned from DuckDuckGo or Tavily.")
+            raise ValueError("No search results returned from Tavily.")
 
         # 4. Identify competitors (AI filtered and ranked, target: 5-7 companies)
         identified_companies = await identify_and_rank_companies(
@@ -121,35 +118,43 @@ async def run_research_pipeline(user_id: str, research_id: str, profile: Dict[st
         if not identified_companies:
             raise ValueError("No competitors could be identified from the web search results.")
 
-        # 5. Enrich and Build Profiles in parallel/sequentially
+        # 5. Enrich and Build Profiles (paced to respect API rate limits)
+        async def enrich_one(company):
+            company_name = company["name"]
+            company_domain = company.get("domain", "")
+            relevance_score = company.get("relevance_score", 50)
+            relevance_reason = company.get("relevance_reason", "")
+            initial_sources = company.get("sources", [])
+
+            enrichment_sources = []
+            try:
+                enrichment_sources = await asyncio.wait_for(
+                    enrich_competitor_with_searches(company_name, company_domain, profile.get("industry", "")),
+                    timeout=8.0
+                )
+            except Exception as ex:
+                logger.debug(f"[pipeline] Fast search enrichment skipped for {company_name}: {ex}")
+
+            return await build_competitor_profile(
+                company_name,
+                company_domain,
+                initial_sources,
+                enrichment_sources,
+                profile,
+                relevance_score,
+                relevance_reason
+            )
+
         competitor_profiles = []
         for company in identified_companies:
             try:
-                company_name = company["name"]
-                company_domain = company["domain"]
-                relevance_score = company.get("relevance_score", 50)
-                relevance_reason = company.get("relevance_reason", "")
-                initial_sources = company.get("sources", [])
-
-                # Run follow-up enrichment searches
-                enrichment_sources = await enrich_competitor_with_searches(
-                    company_name, company_domain, profile.get("industry", "")
-                )
-                
-                # Build profile
-                comp_profile = await build_competitor_profile(
-                    company_name,
-                    company_domain,
-                    initial_sources,
-                    enrichment_sources,
-                    profile,
-                    relevance_score,
-                    relevance_reason
-                )
-                competitor_profiles.append(comp_profile)
+                prof = await enrich_one(company)
+                if isinstance(prof, dict):
+                    competitor_profiles.append(prof)
+                # Small pause to avoid bursting Mistral rate limiter
+                await asyncio.sleep(0.8)
             except Exception as ex:
-                logger.warning(f"[pipeline] Failed to enrich competitor {company.get('name')}: {ex}")
-                continue
+                logger.warning(f"[pipeline] Failed enriching {company.get('name')}: {ex}")
 
         if not competitor_profiles:
             raise ValueError("Failed to enrich any of the identified competitors.")
@@ -161,12 +166,14 @@ async def run_research_pipeline(user_id: str, research_id: str, profile: Dict[st
         await db.competitor_research.update_one(
             {"id": research_id},
             {"$set": {
+                "user_id": user_id,
                 "competitors": competitor_profiles,
                 "comparison": analysis.get("comparison"),
                 "gaps": analysis.get("gaps", []),
                 "research_status": "completed",
                 "completed_at": datetime.utcnow()
-            }}
+            }},
+            upsert=True
         )
         logger.info(f"[pipeline] Competitor research run {research_id} completed successfully.")
 

@@ -63,7 +63,7 @@ function Page() {
         title={companyName}
         subtitle={`${companyTagline} · ${companyStage}`}
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Startup score" value={String(overall)} delta={4} />
         <StatCard label="MRR" value="₹2.1L" delta={14} />
         <StatCard label="Runway" value="11.8 mo" delta={16} />
@@ -101,7 +101,7 @@ function Page() {
         >
           {isEditing ? (
             <div className="space-y-2 text-xs">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[10px] text-muted-foreground font-medium mb-0.5">Company Name</label>
                   <input
@@ -127,7 +127,7 @@ function Page() {
                   className="w-full rounded border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-primary/50"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[10px] text-muted-foreground font-medium mb-0.5">Location</label>
                   <input
@@ -153,7 +153,7 @@ function Page() {
                   className="w-full rounded border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-primary/50"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[10px] text-muted-foreground font-medium mb-0.5">Business Model</label>
                   <input

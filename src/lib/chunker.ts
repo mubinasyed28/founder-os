@@ -3,8 +3,8 @@
  *
  * Handles text extraction from multiple file types:
  *   PDF, DOCX, XLSX, CSV, TXT, MD  → text extraction
- *   PNG, JPEG                       → Gemini vision description
- *   MP4, MOV                        → Gemini video description
+ *   PNG, JPEG                       → Pixtral vision description
+ *   MP4, MOV                        → Video description handler
  *
  * Then chunks the extracted text into overlapping segments
  * suitable for embedding and vector search.
@@ -150,10 +150,10 @@ async function extractVideoText(
   buffer: Buffer,
   mimeType: string,
 ): Promise<string> {
-  // Check file size — Gemini free tier has limits (~20MB for inline data)
+  // Check file size — limits (~20MB for inline data)
   const sizeMB = buffer.length / (1024 * 1024);
   if (sizeMB > 20) {
-    return `[Video file too large for processing: ${sizeMB.toFixed(1)}MB. Maximum supported size is 20MB on the free tier. Please upload a shorter or compressed version.]`;
+    return `[Video file too large for processing: ${sizeMB.toFixed(1)}MB. Maximum supported size is 20MB. Please upload a shorter or compressed version.]`;
   }
   const base64 = buffer.toString("base64");
   return describeVideo(base64, mimeType);

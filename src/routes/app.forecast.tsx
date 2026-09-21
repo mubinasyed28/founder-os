@@ -22,7 +22,7 @@ function Page() {
         title="Three futures, one model"
         subtitle="Base, bull and bear cases derived from your actuals — not a spreadsheet template. The Forecasting Agent re-runs this whenever an assumption changes."
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="MRR today" value="₹2.1L" delta={14} />
         <StatCard label="Base case M12" value={`₹${forecast[11]!.base}K`} />
         <StatCard label="Gross margin" value="63%" delta={4} />

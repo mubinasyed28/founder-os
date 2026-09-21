@@ -196,7 +196,7 @@ Return ONLY a valid JSON object matching:
 """
 
     def call_mistral():
-        for model_name in ["open-mistral-7b", "mistral-small-latest", "mistral-large-latest"]:
+        for model_name in ["mistral-small-latest", "ministral-8b-latest", "open-mistral-7b", "ministral-3b-latest"]:
             try:
                 payload = {
                     "model": model_name,
@@ -205,7 +205,8 @@ Return ONLY a valid JSON object matching:
                         {"role": "user", "content": prompt}
                     ],
                     "response_format": {"type": "json_object"},
-                    "temperature": 0.3
+                    "temperature": 0.3,
+                    "max_tokens": 2500
                 }
                 headers = {
                     "Content-Type": "application/json",
@@ -217,7 +218,7 @@ Return ONLY a valid JSON object matching:
                     headers=headers,
                     method="POST"
                 )
-                with urllib.request.urlopen(req, timeout=40) as resp:
+                with urllib.request.urlopen(req, timeout=45) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     content = data["choices"][0]["message"]["content"]
                     parsed = json.loads(content)
@@ -226,10 +227,11 @@ Return ONLY a valid JSON object matching:
                     elif isinstance(parsed, list):
                         return {"insights": parsed}
             except urllib.error.HTTPError as he:
-                if he.code in [403, 404, 422]:
-                    logger.info(f"[research_insight] Model {model_name} unavailable ({he.code}), trying next")
-                    continue
-                raise he
+                logger.info(f"[research_insight] Model {model_name} HTTP error ({he.code}), trying next")
+                continue
+            except Exception as ex:
+                logger.warning(f"[research_insight] Model {model_name} failed: {ex}")
+                continue
         return {}
 
     try:

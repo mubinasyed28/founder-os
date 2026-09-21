@@ -134,24 +134,39 @@ async def send_rag_chat_message(
     if apiKey:
         try:
             def call_mistral():
-                req_payload = {
-                    "model": "mistral-small-2503",
-                    "messages": formatted_messages,
-                    "max_tokens": 1024
-                }
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {apiKey}"
-                }
-                req = urllib.request.Request(
-                    "https://api.mistral.ai/v1/chat/completions",
-                    data=json.dumps(req_payload).encode("utf-8"),
-                    headers=headers,
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=60) as response:
-                    resp_json = json.loads(response.read().decode("utf-8"))
-                    return resp_json["choices"][0]["message"]["content"]
+                candidate_models = ["mistral-small-latest", "ministral-8b-latest", "open-mistral-7b", "ministral-3b-latest"]
+                last_err = None
+                for model_name in candidate_models:
+                    req_payload = {
+                        "model": model_name,
+                        "messages": formatted_messages,
+                        "max_tokens": 2048
+                    }
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {apiKey}"
+                    }
+                    req = urllib.request.Request(
+                        "https://api.mistral.ai/v1/chat/completions",
+                        data=json.dumps(req_payload).encode("utf-8"),
+                        headers=headers,
+                        method="POST"
+                    )
+                    try:
+                        with urllib.request.urlopen(req, timeout=45) as response:
+                            resp_json = json.loads(response.read().decode("utf-8"))
+                            return resp_json["choices"][0]["message"]["content"]
+                    except urllib.error.HTTPError as he:
+                        logger.warning(f"[chat] Model {model_name} HTTP {he.code}: {he.read().decode('utf-8', errors='ignore')[:120]}")
+                        last_err = he
+                        continue
+                    except Exception as e:
+                        logger.warning(f"[chat] Model {model_name} failed: {e}")
+                        last_err = e
+                        continue
+                if last_err:
+                    raise last_err
+                raise RuntimeError("All Mistral chat candidate models failed")
                     
             assistant_reply = await asyncio.to_thread(call_mistral)
         except Exception as e:

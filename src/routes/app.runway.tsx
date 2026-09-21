@@ -21,7 +21,7 @@ function Page() {
         title="11.8 months, and improving"
         subtitle="Burn fell 9% after moving inference to a cheaper tier. At the current trajectory you hit the 6-month danger line in February 2027."
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Cash in bank" value="₹40.1L" />
         <StatCard label="Net burn" value="₹3.4L/mo" delta={-9} />
         <StatCard label="Runway" value="11.8 mo" delta={16} />

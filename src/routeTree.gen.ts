@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAgentsRouteImport } from './routes/app.agents'
 import { Route as AppChatRouteImport } from './routes/app.chat'
 import { Route as AppCompetitorsRouteImport } from './routes/app.competitors'
+import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppDeckRouteImport } from './routes/app.deck'
 import { Route as AppDocumentsRouteImport } from './routes/app.documents'
 import { Route as AppForecastRouteImport } from './routes/app.forecast'
@@ -78,6 +79,11 @@ const AppChatRoute = AppChatRouteImport.update({
 const AppCompetitorsRoute = AppCompetitorsRouteImport.update({
   id: '/competitors',
   path: '/competitors',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDeckRoute = AppDeckRouteImport.update({
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
   '/app/competitors': typeof AppCompetitorsRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
   '/app/deck': typeof AppDeckRoute
   '/app/documents': typeof AppDocumentsRoute
   '/app/forecast': typeof AppForecastRoute
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
   '/app/competitors': typeof AppCompetitorsRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
   '/app/deck': typeof AppDeckRoute
   '/app/documents': typeof AppDocumentsRoute
   '/app/forecast': typeof AppForecastRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
   '/app/competitors': typeof AppCompetitorsRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
   '/app/deck': typeof AppDeckRoute
   '/app/documents': typeof AppDocumentsRoute
   '/app/forecast': typeof AppForecastRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/app/agents'
     | '/app/chat'
     | '/app/competitors'
+    | '/app/dashboard'
     | '/app/deck'
     | '/app/documents'
     | '/app/forecast'
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/app/agents'
     | '/app/chat'
     | '/app/competitors'
+    | '/app/dashboard'
     | '/app/deck'
     | '/app/documents'
     | '/app/forecast'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/app/agents'
     | '/app/chat'
     | '/app/competitors'
+    | '/app/dashboard'
     | '/app/deck'
     | '/app/documents'
     | '/app/forecast'
@@ -448,6 +460,13 @@ declare module '@tanstack/react-router' {
       path: '/competitors'
       fullPath: '/app/competitors'
       preLoaderRoute: typeof AppCompetitorsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/deck': {
@@ -623,6 +642,7 @@ interface AppRouteChildren {
   AppAgentsRoute: typeof AppAgentsRoute
   AppChatRoute: typeof AppChatRoute
   AppCompetitorsRoute: typeof AppCompetitorsRouteWithChildren
+  AppDashboardRoute: typeof AppDashboardRoute
   AppDeckRoute: typeof AppDeckRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppForecastRoute: typeof AppForecastRoute
@@ -651,6 +671,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgentsRoute: AppAgentsRoute,
   AppChatRoute: AppChatRoute,
   AppCompetitorsRoute: AppCompetitorsRouteWithChildren,
+  AppDashboardRoute: AppDashboardRoute,
   AppDeckRoute: AppDeckRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppForecastRoute: AppForecastRoute,

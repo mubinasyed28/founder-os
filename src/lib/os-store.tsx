@@ -198,29 +198,41 @@ export function OsProvider({ children }: { children: ReactNode }) {
       const decisionsMap = oppData?.decisions || {};
       const expsMap = oppData?.experiments || {};
 
-      setOpportunities(
-        rawList.map((opp: any) => {
-          let updated = { ...opp };
-          if (decisionsMap[opp.id]) {
-            const dec = decisionsMap[opp.id];
-            updated.decisionRecord = dec;
-            if (dec.decision === "pursue") updated.status = "pursued";
-            else if (dec.decision === "park") updated.status = "parked";
-            else if (dec.decision === "reject") updated.status = "rejected";
-            else if (dec.decision === "validate") updated.status = "validating";
-          }
-          if (updated.validationExperiments) {
-            updated.validationExperiments = updated.validationExperiments.map((exp: any) => {
-              const expKey = `${opp.id}_${exp.id}`;
-              if (expsMap[expKey]) {
-                return { ...exp, status: expsMap[expKey] };
-              }
-              return exp;
-            });
-          }
-          return updated;
-        })
-      );
+      const normalizeStoreOpp = (opp: any, idx: number) => {
+        let updated = { ...opp };
+        if (!updated.id) {
+          updated.id = opp.opportunity_id || opp.opp_id || `O-${51 + idx}`;
+        }
+        if (!updated.title) {
+          updated.title = opp.strategy || opp.name || `Strategic Initiative ${idx + 1}`;
+        }
+        if (!updated.status) updated.status = "detected";
+        if (!updated.size) updated.size = "High";
+        if (!updated.type) updated.type = "Market gap";
+        if (!updated.confidence) updated.confidence = 85;
+        if (!updated.signal) updated.signal = "Market signal flagged by AI Strategy Agent";
+
+        if (decisionsMap[updated.id]) {
+          const dec = decisionsMap[updated.id];
+          updated.decisionRecord = dec;
+          if (dec.decision === "pursue") updated.status = "pursued";
+          else if (dec.decision === "park") updated.status = "parked";
+          else if (dec.decision === "reject") updated.status = "rejected";
+          else if (dec.decision === "validate") updated.status = "validating";
+        }
+        if (updated.validationExperiments) {
+          updated.validationExperiments = updated.validationExperiments.map((exp: any) => {
+            const expKey = `${updated.id}_${exp.id}`;
+            if (expsMap[expKey]) {
+              return { ...exp, status: expsMap[expKey] };
+            }
+            return exp;
+          });
+        }
+        return updated;
+      };
+
+      setOpportunities(rawList.map(normalizeStoreOpp));
     } catch (err) {
       console.warn("Failed to refresh opportunities:", err);
     }
@@ -253,10 +265,22 @@ export function OsProvider({ children }: { children: ReactNode }) {
             const expsMap = oppData?.experiments || {};
 
             setOpportunities(
-              rawList.map((opp: any) => {
+              rawList.map((opp: any, idx: number) => {
                 let updated = { ...opp };
-                if (decisionsMap[opp.id]) {
-                  const dec = decisionsMap[opp.id];
+                if (!updated.id) {
+                  updated.id = opp.opportunity_id || opp.opp_id || `O-${51 + idx}`;
+                }
+                if (!updated.title) {
+                  updated.title = opp.strategy || opp.name || `Strategic Initiative ${idx + 1}`;
+                }
+                if (!updated.status) updated.status = "detected";
+                if (!updated.size) updated.size = "High";
+                if (!updated.type) updated.type = "Market gap";
+                if (!updated.confidence) updated.confidence = 85;
+                if (!updated.signal) updated.signal = "Market signal flagged by AI Strategy Agent";
+
+                if (decisionsMap[updated.id]) {
+                  const dec = decisionsMap[updated.id];
                   updated.decisionRecord = dec;
                   if (dec.decision === "pursue") updated.status = "pursued";
                   else if (dec.decision === "park") updated.status = "parked";
@@ -265,7 +289,7 @@ export function OsProvider({ children }: { children: ReactNode }) {
                 }
                 if (updated.validationExperiments) {
                   updated.validationExperiments = updated.validationExperiments.map((exp: any) => {
-                    const expKey = `${opp.id}_${exp.id}`;
+                    const expKey = `${updated.id}_${exp.id}`;
                     if (expsMap[expKey]) {
                       return { ...exp, status: expsMap[expKey] };
                     }
