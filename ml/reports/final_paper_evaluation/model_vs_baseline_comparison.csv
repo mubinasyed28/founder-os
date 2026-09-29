@@ -1,0 +1,11 @@
+Model,RMSE ($),MAE ($),MAPE (%),R²,Directional Acc (%),Task,ROC-AUC,PR-AUC,Precision,Recall,F1,Brier,Accuracy
+Naive Persistence,"5,804.14","2,681.17",19.05%,0.8470,42.66%,Model 1: MRR Regression,,,,,,,
+Ridge Regression,"5,255.17","2,748.66",28.15%,0.8745,47.83%,Model 1: MRR Regression,,,,,,,
+XGBRegressor (Primary),"6,748.16","3,499.79",37.88%,0.7931,47.10%,Model 1: MRR Regression,,,,,,,
+Dummy (Majority),,,,,,Model 1: Churn Classification,0.5000,0.1295,0.0000,0.0000,0.0000,0.1163,
+Logistic Regression,,,,,,Model 1: Churn Classification,0.6247,0.2003,0.1820,0.6255,0.2820,0.2316,
+XGBClassifier (Primary),,,,,,Model 1: Churn Classification,0.5583,0.1708,0.2114,0.0945,0.1307,0.1311,
+Dummy (Majority),,,,,,Model 2: Startup Survival Classification,0.5000,0.6580,0.6580,1.0000,0.7937,0.2250,0.6580
+Logistic Regression,,,,,,Model 2: Startup Survival Classification,0.6774,0.7974,0.7700,0.5984,0.6734,0.2265,0.6181
+Random Forest,,,,,,Model 2: Startup Survival Classification,0.6811,0.8001,0.7708,0.6134,0.6832,0.2235,0.6256
+XGBClassifier (Primary),,,,,,Model 2: Startup Survival Classification,0.6821,0.8020,0.7049,0.8868,0.7855,0.2044,0.6813
