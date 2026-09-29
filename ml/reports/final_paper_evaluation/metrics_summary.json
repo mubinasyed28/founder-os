@@ -1,0 +1,190 @@
+{
+  "evaluation_date": "2026-09-30",
+  "status": "VERIFIED_AUDITED",
+  "models": {
+    "model1_revenue_forecast": {
+      "target": "next_month_mrr",
+      "target_unit": "USD",
+      "test_split": "Out-of-time (2024-07 to 2024-12)",
+      "test_samples_n": 2070,
+      "xgboost": {
+        "RMSE": 6748.156975927799,
+        "MAE": 3499.794874314755,
+        "MAPE_pct": 37.88199300792173,
+        "R2": 0.793140315829753,
+        "Directional_Accuracy_pct": 47.10144927536232
+      },
+      "baselines": {
+        "ridge_regression": {
+          "RMSE": 5255.170424086128,
+          "MAE": 2748.6618593419507,
+          "MAPE_pct": 28.151342836565508,
+          "R2": 0.8745475597664306,
+          "Directional_Accuracy_pct": 47.82608695652174
+        },
+        "naive_persistence": {
+          "RMSE": 5804.1382135033,
+          "MAE": 2681.174396135266,
+          "MAPE_pct": 19.04763560653731,
+          "R2": 0.8469684435198033,
+          "Directional_Accuracy_pct": 42.65700483091787
+        }
+      },
+      "best_performing_rmse": "Ridge Regression ($5,255.17)",
+      "best_performing_mae": "Naive Persistence ($2,681.17)",
+      "serving_recommendation": "Hybrid: current MRR baseline + XGBoost scenario delta"
+    },
+    "model1_churn_risk": {
+      "target": "target_churn_event_t1",
+      "target_unit": "binary_probability",
+      "test_split": "Out-of-time (2024-07 to 2024-12)",
+      "test_samples_n": 2123,
+      "base_rate_churn": 0.12953367875647667,
+      "xgboost": {
+        "Accuracy": 0.8370230805463966,
+        "Precision": 0.21138211382113822,
+        "Recall": 0.09454545454545454,
+        "F1": 0.1306532663316583,
+        "ROC_AUC": 0.5582683982683982,
+        "PR_AUC": 0.17075780263969054,
+        "Brier_Score": 0.1310618817806244,
+        "Confusion_Matrix": [
+          [
+            1751,
+            97
+          ],
+          [
+            249,
+            26
+          ]
+        ]
+      },
+      "baselines": {
+        "logistic_regression": {
+          "Accuracy": 0.5873763542157324,
+          "Precision": 0.182010582010582,
+          "Recall": 0.6254545454545455,
+          "F1": 0.2819672131147541,
+          "ROC_AUC": 0.624681227863046,
+          "PR_AUC": 0.2003453788496892,
+          "Brier_Score": 0.23158947548996758,
+          "Confusion_Matrix": [
+            [
+              1075,
+              773
+            ],
+            [
+              103,
+              172
+            ]
+          ]
+        },
+        "dummy_classifier": {
+          "Accuracy": 0.8704663212435233,
+          "Precision": 0.0,
+          "Recall": 0.0,
+          "F1": 0.0,
+          "ROC_AUC": 0.5,
+          "PR_AUC": 0.12953367875647667,
+          "Brier_Score": 0.11629447768776577,
+          "Confusion_Matrix": [
+            [
+              1848,
+              0
+            ],
+            [
+              275,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    "model2_startup_survival": {
+      "target": "failed",
+      "target_unit": "binary_probability",
+      "observation_stage": "Stage 0 (Day 0 Founding)",
+      "test_split": "Stratified 20% holdout",
+      "test_samples_n": 9600,
+      "base_rate_failed": 0.6580208333333334,
+      "xgboost": {
+        "Accuracy": 0.68125,
+        "Precision": 0.7049200956335724,
+        "Recall": 0.8868133607725186,
+        "F1": 0.7854739203589456,
+        "ROC_AUC": 0.6820518160458477,
+        "PR_AUC": 0.8019909109516619,
+        "Brier_Score": 0.20441274344921112,
+        "Confusion_Matrix": [
+          [
+            938,
+            2345
+          ],
+          [
+            715,
+            5602
+          ]
+        ]
+      },
+      "baselines": {
+        "random_forest": {
+          "Accuracy": 0.625625,
+          "Precision": 0.7708374776208474,
+          "Recall": 0.6134240937153712,
+          "F1": 0.6831805359661495,
+          "ROC_AUC": 0.6810927159359133,
+          "PR_AUC": 0.8001219309807825,
+          "Brier_Score": 0.22350229326088736,
+          "Confusion_Matrix": [
+            [
+              2131,
+              1152
+            ],
+            [
+              2442,
+              3875
+            ]
+          ]
+        },
+        "logistic_regression": {
+          "Accuracy": 0.618125,
+          "Precision": 0.7700142595233245,
+          "Recall": 0.5983853094823492,
+          "F1": 0.6734366648850882,
+          "ROC_AUC": 0.6773803347758691,
+          "PR_AUC": 0.7974381473358118,
+          "Brier_Score": 0.22647104634987036,
+          "Confusion_Matrix": [
+            [
+              2154,
+              1129
+            ],
+            [
+              2537,
+              3780
+            ]
+          ]
+        },
+        "dummy_classifier": {
+          "Accuracy": 0.6580208333333334,
+          "Precision": 0.6580208333333334,
+          "Recall": 1.0,
+          "F1": 0.7937425394232581,
+          "ROC_AUC": 0.5,
+          "PR_AUC": 0.6580208333333334,
+          "Brier_Score": 0.22502941894531253,
+          "Confusion_Matrix": [
+            [
+              0,
+              3283
+            ],
+            [
+              0,
+              6317
+            ]
+          ]
+        }
+      }
+    }
+  }
+}
