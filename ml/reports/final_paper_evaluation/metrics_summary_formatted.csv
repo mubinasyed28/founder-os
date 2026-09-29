@@ -1,0 +1,11 @@
+Subsystem,Model,Target,Metric_1,Metric_2,Metric_3,Metric_4,Metric_5,Metric_6,N_Test
+Model 1: Revenue,XGBRegressor (Trained),next_month_mrr,"RMSE=$6,748.16","MAE=$3,499.79",MAPE=37.88%,R²=0.7931,DirAcc=47.10%,-,2070
+Model 1: Revenue,Ridge Regression (Baseline),next_month_mrr,"RMSE=$5,255.17","MAE=$2,748.66",MAPE=28.15%,R²=0.8745,DirAcc=47.83%,-,2070
+Model 1: Revenue,Naive Persistence (Baseline),next_month_mrr,"RMSE=$5,804.14","MAE=$2,681.17",MAPE=19.05%,R²=0.8470,DirAcc=42.66%,-,2070
+Model 1: Churn,XGBClassifier (Trained),target_churn_event_t1,ROC-AUC=0.5583,PR-AUC=0.1708,Precision=0.2114,Recall=0.0945,F1=0.1307,Brier=0.1311,2123
+Model 1: Churn,LogisticRegression (Baseline),target_churn_event_t1,ROC-AUC=0.6247,PR-AUC=0.2003,Precision=0.1820,Recall=0.6255,F1=0.2820,Brier=0.2316,2123
+Model 1: Churn,DummyClassifier (Baseline),target_churn_event_t1,ROC-AUC=0.5000,PR-AUC=0.1295,Precision=0.0000,Recall=0.0000,F1=0.0000,Brier=0.1163,2123
+Model 2: Survival,XGBClassifier (Trained),failed,Accuracy=0.6813,Precision=0.7049,Recall=0.8868,F1=0.7855,ROC-AUC=0.6821,Brier=0.2044,9600
+Model 2: Survival,RandomForest (Baseline),failed,Accuracy=0.6256,Precision=0.7708,Recall=0.6134,F1=0.6832,ROC-AUC=0.6811,Brier=0.2235,9600
+Model 2: Survival,LogisticRegression (Baseline),failed,Accuracy=0.6181,Precision=0.7700,Recall=0.5984,F1=0.6734,ROC-AUC=0.6774,Brier=0.2265,9600
+Model 2: Survival,DummyClassifier (Baseline),failed,Accuracy=0.6580,Precision=0.6580,Recall=1.0000,F1=0.7937,ROC-AUC=0.5000,Brier=0.2250,9600
