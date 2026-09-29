@@ -1,0 +1,4 @@
+Model,RMSE ($),MAE ($),MAPE (%),R²,Directional Acc (%)
+Naive Persistence,"5,804.14","2,681.17",19.05%,0.8470,42.66%
+Ridge Regression,"5,255.17","2,748.66",28.15%,0.8745,47.83%
+XGBRegressor (Primary),"6,748.16","3,499.79",37.88%,0.7931,47.10%
