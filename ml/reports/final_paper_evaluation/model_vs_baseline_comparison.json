@@ -1,0 +1,99 @@
+{
+  "model1_revenue": [
+    {
+      "Model": "Naive Persistence",
+      "RMSE ($)": "5,804.14",
+      "MAE ($)": "2,681.17",
+      "MAPE (%)": "19.05%",
+      "R\u00b2": "0.8470",
+      "Directional Acc (%)": "42.66%"
+    },
+    {
+      "Model": "Ridge Regression",
+      "RMSE ($)": "5,255.17",
+      "MAE ($)": "2,748.66",
+      "MAPE (%)": "28.15%",
+      "R\u00b2": "0.8745",
+      "Directional Acc (%)": "47.83%"
+    },
+    {
+      "Model": "XGBRegressor (Primary)",
+      "RMSE ($)": "6,748.16",
+      "MAE ($)": "3,499.79",
+      "MAPE (%)": "37.88%",
+      "R\u00b2": "0.7931",
+      "Directional Acc (%)": "47.10%"
+    }
+  ],
+  "model1_churn": [
+    {
+      "Model": "Dummy (Majority)",
+      "ROC-AUC": "0.5000",
+      "PR-AUC": "0.1295",
+      "Precision": "0.0000",
+      "Recall": "0.0000",
+      "F1": "0.0000",
+      "Brier": "0.1163"
+    },
+    {
+      "Model": "Logistic Regression",
+      "ROC-AUC": "0.6247",
+      "PR-AUC": "0.2003",
+      "Precision": "0.1820",
+      "Recall": "0.6255",
+      "F1": "0.2820",
+      "Brier": "0.2316"
+    },
+    {
+      "Model": "XGBClassifier (Primary)",
+      "ROC-AUC": "0.5583",
+      "PR-AUC": "0.1708",
+      "Precision": "0.2114",
+      "Recall": "0.0945",
+      "F1": "0.1307",
+      "Brier": "0.1311"
+    }
+  ],
+  "model2_survival": [
+    {
+      "Model": "Dummy (Majority)",
+      "Accuracy": "0.6580",
+      "Precision": "0.6580",
+      "Recall": "1.0000",
+      "F1": "0.7937",
+      "ROC-AUC": "0.5000",
+      "PR-AUC": "0.6580",
+      "Brier": "0.2250"
+    },
+    {
+      "Model": "Logistic Regression",
+      "Accuracy": "0.6181",
+      "Precision": "0.7700",
+      "Recall": "0.5984",
+      "F1": "0.6734",
+      "ROC-AUC": "0.6774",
+      "PR-AUC": "0.7974",
+      "Brier": "0.2265"
+    },
+    {
+      "Model": "Random Forest",
+      "Accuracy": "0.6256",
+      "Precision": "0.7708",
+      "Recall": "0.6134",
+      "F1": "0.6832",
+      "ROC-AUC": "0.6811",
+      "PR-AUC": "0.8001",
+      "Brier": "0.2235"
+    },
+    {
+      "Model": "XGBClassifier (Primary)",
+      "Accuracy": "0.6813",
+      "Precision": "0.7049",
+      "Recall": "0.8868",
+      "F1": "0.7855",
+      "ROC-AUC": "0.6821",
+      "PR-AUC": "0.8020",
+      "Brier": "0.2044"
+    }
+  ]
+}
