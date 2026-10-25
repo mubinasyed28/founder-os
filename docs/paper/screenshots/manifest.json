@@ -1,0 +1,128 @@
+[
+  {
+    "name": "01_landing_page",
+    "description": "Landing / Marketing Page",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\01_landing_page.png",
+    "size": 535127
+  },
+  {
+    "name": "02_onboarding",
+    "description": "Startup Onboarding Wizard",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\02_onboarding.png",
+    "size": 511576
+  },
+  {
+    "name": "03_dashboard",
+    "description": "Main Dashboard with KPI Overview",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\03_dashboard.png",
+    "size": 746568
+  },
+  {
+    "name": "04_workspace",
+    "description": "Company Workspace",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\04_workspace.png",
+    "size": 396722
+  },
+  {
+    "name": "05_knowledge_base",
+    "description": "Knowledge Base / Document Store",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\05_knowledge_base.png",
+    "size": 313212
+  },
+  {
+    "name": "06_health",
+    "description": "Startup Health Diagnostics",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\06_health.png",
+    "size": 404786
+  },
+  {
+    "name": "07_research",
+    "description": "AI Research Agent",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\07_research.png",
+    "size": 498663
+  },
+  {
+    "name": "08_simulator",
+    "description": "Decision Simulator",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\08_simulator.png",
+    "size": 433928
+  },
+  {
+    "name": "09_forecast",
+    "description": "ML Forecast / Predictions",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\09_forecast.png",
+    "size": 294726
+  },
+  {
+    "name": "10_reasoning",
+    "description": "AI Reasoning / Chat Interface",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\10_reasoning.png",
+    "size": 356335
+  },
+  {
+    "name": "11_documents",
+    "description": "Document Management",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\11_documents.png",
+    "size": 287951
+  },
+  {
+    "name": "12_metrics",
+    "description": "Business Metrics",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\12_metrics.png",
+    "size": 261210
+  },
+  {
+    "name": "13_opportunities",
+    "description": "Opportunity Scoring",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\13_opportunities.png",
+    "size": 470202
+  },
+  {
+    "name": "14_investors",
+    "description": "Investor Matching",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\14_investors.png",
+    "size": 352622
+  },
+  {
+    "name": "15_profile",
+    "description": "Founder Profile",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\15_profile.png",
+    "size": 394168
+  },
+  {
+    "name": "16_graph",
+    "description": "Knowledge Graph",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\16_graph.png",
+    "size": 370104
+  },
+  {
+    "name": "17_runway",
+    "description": "Financial Runway",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\17_runway.png",
+    "size": 327651
+  },
+  {
+    "name": "18_validation",
+    "description": "Idea Validation",
+    "status": "OK",
+    "file": "C:\\Users\\YOCKET-271\\Documents\\GitHub\\founder-os\\docs\\paper\\screenshots\\18_validation.png",
+    "size": 330969
+  }
+]
